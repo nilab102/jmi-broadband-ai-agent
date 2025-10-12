@@ -7,10 +7,12 @@ This document describes the implementation of a unified tool adapter that allows
 ## Problem Statement
 
 Previously:
-- **Voice Agent (Pipecat)**: Used `AgentManager` to route function calls to page-specific tools (`DashboardTool`, `UsersTool`, `RolesTool`, etc.)
+- **Voice Agent (Pipecat)**: Used `AgentManager` to route function calls to page-specific tools
 - **Text Agent (LangChain)**: Had its own mock tools that didn't integrate with the actual tool structure
 
 This created code duplication and inconsistent behavior between voice and text agents.
+
+**Current Implementation:** The system is now focused on broadband comparison services with a single `BroadbandTool` that handles all broadband-related operations.
 
 ## Solution Architecture
 
@@ -53,20 +55,11 @@ The adapter uses `_determine_function_name()` to map actions to the correct page
 
 ```python
 page_function_map = {
-    "dashboard": "dashboard_action",
-    "users": "users_action",
-    "roles": "roles_action",
-    "database-query": "database_query_action",
-    "database-query-results": "database_query_action",
-    "company-structure": "company_structure_action",
-    "tables": "tables_action",
-    "file-query": "file_query_action",
-    "history": "history_action",
-    "profile": "profile_action",
+    "broadband": "broadband_action",
 }
 ```
 
-**Navigation actions** always route through `dashboard_action`, while other actions route based on the current page context.
+All actions route to the `broadband_action` function which is handled by the `BroadbandTool`.
 
 ### 3. **Factory Function**
 
@@ -78,7 +71,7 @@ page_function_map = {
 def create_langchain_tools_from_agent_manager(
     user_id: str, 
     callback_handler=None, 
-    current_page: str = "dashboard"
+    current_page: str = "broadband"
 ):
     # Creates AgentManager instance
     # Returns list of LangChain tools (currently just ModularToolAdapter)
@@ -100,7 +93,7 @@ def create_langchain_tools_from_agent_manager(
 **Example:**
 ```python
 class LangChainTextAgent:
-    def __init__(self, user_id: str, current_page: str = "dashboard"):
+    def __init__(self, user_id: str, current_page: str = "broadband"):
         self.user_id = user_id
         self.current_page = current_page
         self.agent_manager = None  # Created during initialization
@@ -142,19 +135,19 @@ async def text_conversation_websocket_endpoint(websocket: WebSocket):
 
 # Memory management
 @router.get("/memory/{user_id}")
-async def get_user_memory(user_id: str, current_page: str = "dashboard"):
+async def get_user_memory(user_id: str, current_page: str = "broadband"):
     # Uses page-specific agent key
 
 @router.delete("/memory/{user_id}")
-async def clear_user_memory(user_id: str, current_page: str = "dashboard"):
+async def clear_user_memory(user_id: str, current_page: str = "broadband"):
     # Uses page-specific agent key
 
 @router.post("/memory/{user_id}/save")
-async def save_user_memory(user_id: str, current_page: str = "dashboard"):
+async def save_user_memory(user_id: str, current_page: str = "broadband"):
     # Uses page-specific agent key
 
 @router.post("/memory/{user_id}/load")
-async def load_user_memory(user_id: str, memory_data: dict, current_page: str = "dashboard"):
+async def load_user_memory(user_id: str, memory_data: dict, current_page: str = "broadband"):
     # Uses page-specific agent key
 
 @router.delete("/text-agent/{user_id}")
@@ -197,27 +190,19 @@ User types → LangChain Agent → Gemini 2.5 Flash → Tool Call
 
 ## Tool Capabilities
 
-All page-specific tools are now available to the text agent:
+The broadband tool is available to both voice and text agents:
 
-- **DashboardTool**: Navigation, overview, status checks
-- **UsersTool**: User access management, MSSQL/Vector DB access
-- **RolesTool**: Role management, assignment, permissions
-- **DatabaseQueryTool**: Natural language database queries
-- **CompanyStructureTool**: Organization hierarchy management
-- **TablesTool**: Database table operations
-- **FileQueryTool**: File search and upload
-- **HistoryTool**: Query history viewing
-- **ProfileTool**: User profile and configuration
+- **BroadbandTool**: Broadband comparison with automatic postcode validation, URL generation, data scraping, AI-powered recommendations, provider comparison, and deal filtering
 
 ## Testing
 
 ### Test Text Agent Connection:
 ```bash
 # Connect to text conversation WebSocket
-wscat -c "wss://your-backend/voice/ws/text-conversation?user_id=test_user&current_page=dashboard"
+wscat -c "wss://your-backend/voice/ws/text-conversation?user_id=test_user&current_page=broadband"
 
 # Send a message
-{"message": "Navigate to users page"}
+{"message": "Find broadband deals in London E14 9WB"}
 ```
 
 ### Test Tool Execution:
@@ -226,7 +211,7 @@ wscat -c "wss://your-backend/voice/ws/text-conversation?user_id=test_user&curren
 # 1. Parse your message with LangChain
 # 2. Call ModularToolAdapter
 # 3. Route through AgentManager
-# 4. Execute UsersTool or appropriate tool
+# 4. Execute BroadbandTool with appropriate action
 # 5. Send WebSocket message with structured output
 # 6. Return natural language response
 ```
@@ -234,10 +219,10 @@ wscat -c "wss://your-backend/voice/ws/text-conversation?user_id=test_user&curren
 ### Verify Memory Management:
 ```bash
 # Get memory
-curl https://your-backend/voice/memory/test_user?current_page=dashboard
+curl https://your-backend/voice/memory/test_user?current_page=broadband
 
 # Clear memory
-curl -X DELETE https://your-backend/voice/memory/test_user?current_page=dashboard
+curl -X DELETE https://your-backend/voice/memory/test_user?current_page=broadband
 ```
 
 ## Migration Notes

@@ -1079,9 +1079,13 @@ class BroadbandTool(BaseTool):
                         "query", "generate_url", "scrape_data", "get_recommendations",
                         "compare_providers", "refine_search", "get_cheapest",
                         "get_fastest", "clarify_missing_params", "list_providers",
-                        "filter_data"
+                        "filter_data", "open_url"
                     ],
-                    "description": "Type of broadband action. Use 'query' for natural language queries (includes automatic postcode validation and matching). Postcode auto-selection happens automatically in the background."
+                    "description": "Type of broadband action. Use 'query' for natural language queries (includes automatic postcode validation and matching). Use 'open_url' to open a URL in a new tab. Postcode auto-selection happens automatically in the background."
+                },
+                "url": {
+                    "type": "string",
+                    "description": "URL to open in a new tab (for open_url action)"
                 },
                 "query": {
                     "type": "string",
@@ -1165,7 +1169,7 @@ class BroadbandTool(BaseTool):
                      confirmed_postcode: str = None, original_postcode: str = None,
                      filter_speed: str = None, filter_providers: str = None,
                      filter_contract: str = None, filter_phone_calls: str = None,
-                     filter_new_line: str = None, **kwargs) -> str:
+                     filter_new_line: str = None, url: str = None, **kwargs) -> str:
         """Execute broadband action."""
         try:
             # Initialize user session
@@ -1319,6 +1323,8 @@ class BroadbandTool(BaseTool):
                 return await self._handle_postcode_suggestions(user_id, original_postcode, context)
             elif action_type == "filter_data":
                 return await self._handle_filter_data(user_id, filter_speed, filter_providers, filter_contract, filter_phone_calls, filter_new_line, context)
+            elif action_type == "open_url":
+                return await self._handle_open_url(user_id, url, context)
             else:
                 return f"❌ Invalid action type: {action_type}"
 
@@ -2277,6 +2283,43 @@ class BroadbandTool(BaseTool):
             pass
 
         return filtered_deals
+
+    async def _handle_open_url(self, user_id: str, url: str = None, context: str = None) -> str:
+        """Handle opening a URL in a new tab."""
+        try:
+            if not url:
+                return "❌ Please provide a URL to open."
+
+            # Validate URL format
+            if not url.startswith(('http://', 'https://')):
+                # Add https:// if no protocol specified
+                url = f"https://{url}"
+
+            # Create structured output for AI
+            structured_output = self._create_structured_output(
+                user_id=user_id,
+                action_type="url_opened",
+                param="url",
+                value=url,
+                interaction_type="url_open",
+                clicked=True,
+                element_name="open_url",
+                context=context,
+                url=url
+            )
+
+            await self.send_websocket_message(
+                message_type="url_action",
+                action="open_url",
+                data=structured_output
+            )
+
+            logger.info(f"🔗 Opening URL for user {user_id}: {url}")
+            return f"✅ Opening URL: {url}"
+
+        except Exception as e:
+            logger.error(f"❌ Error opening URL: {e}")
+            return f"❌ Error opening URL: {str(e)}"
 
 
 def create_broadband_tool(rtvi_processor: RTVIProcessor, task=None, initial_current_page: str = "broadband") -> BroadbandTool:

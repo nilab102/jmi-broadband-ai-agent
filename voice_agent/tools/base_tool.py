@@ -17,7 +17,7 @@ from loguru import logger
 class BaseTool:
     """Base tool class with standard WebSocket communication and enhanced functionality."""
     
-    def __init__(self, rtvi_processor: RTVIProcessor, task=None, initial_current_page: str = "dashboard"):
+    def __init__(self, rtvi_processor: RTVIProcessor, task=None, initial_current_page: str = "broadband"):
         self.rtvi = rtvi_processor
         self.task = task
         self.initial_current_page = initial_current_page

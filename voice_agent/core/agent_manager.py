@@ -16,15 +16,15 @@ from voice_agent.utils.validators import validate_page_name
 
 # Import page-specific tools
 from voice_agent.tools import (
-    DashboardTool, BroadbandTool,
-    create_dashboard_tool, create_broadband_tool
+    BroadbandTool,
+    create_broadband_tool
 )
 
 
 class AgentManager:
     """Enhanced agent manager with modular tool support and page awareness."""
     
-    def __init__(self, rtvi_processor: RTVIProcessor = None, task=None, current_page: str = "dashboard"):
+    def __init__(self, rtvi_processor: RTVIProcessor = None, task=None, current_page: str = "broadband"):
         self.rtvi_processor = rtvi_processor
         self.task = task
         self.settings = get_settings()
@@ -55,13 +55,11 @@ class AgentManager:
             
             # Create page-specific tools
             self.page_tools = {
-                "dashboard": create_dashboard_tool(self.rtvi_processor, self.task, "dashboard"),
                 "broadband": create_broadband_tool(self.rtvi_processor, self.task, "broadband"),
             }
 
             # Create tool instances mapping for backward compatibility
             self.tool_instances = {
-                "dashboard_tool": self.page_tools["dashboard"],
                 "broadband_tool": self.page_tools["broadband"],
             }
             
@@ -219,8 +217,15 @@ You are currently on the **{current_page}** page.
         """Get formatted recommendations string for a page."""
         recommendations = []
         
-        if page_name == "dashboard":
-            recommendations.append("Use 'navigate' to go to other pages")
+        if page_name == "broadband":
+            recommendations.extend([
+                "Use 'query' for natural language broadband searches",
+                "Use 'generate_url' to create comparison URLs",
+                "Use 'get_recommendations' for AI-powered deal suggestions",
+                "Use 'compare_providers' to compare specific providers",
+                "Use 'get_cheapest' or 'get_fastest' to find best deals",
+                "Use 'list_providers' to see all available providers"
+            ])
         elif page_name == "users":
             recommendations.extend([
                 "Use 'switch_tab' to switch between 'mssql' and 'vector' tabs",
@@ -303,7 +308,6 @@ You are currently on the **{current_page}** page.
         
         # Function name to tool mapping
         function_tool_mapping = {
-            "dashboard_action": "dashboard",
             "broadband_action": "broadband",
 
             # Legacy mapping for backward compatibility
@@ -331,8 +335,8 @@ You are currently on the **{current_page}** page.
         
         # Try to route based on action type and current page
         if action_type == "navigate":
-            # Navigation can be handled by any page tool, use current page tool
-            tool = self.page_tools.get(current_page)
+            # Navigation requests - use current page tool or broadband tool
+            tool = self.page_tools.get(current_page) or self.page_tools.get("broadband")
             if tool and hasattr(tool, 'execute'):
                 return await tool.execute(**args)
         
@@ -356,8 +360,8 @@ You are currently on the **{current_page}** page.
         
         # Route based on action type
         if action_type == "navigate":
-            # Use dashboard tool for navigation (or current page tool)
-            tool = self.page_tools.get("dashboard") or self.page_tools.get(current_page)
+            # Use current page tool or broadband tool for navigation
+            tool = self.page_tools.get(current_page) or self.page_tools.get("broadband")
             if tool:
                 # Convert to new format
                 new_args = {
@@ -376,6 +380,6 @@ You are currently on the **{current_page}** page.
         return f"Could not route legacy function call: {action_type} -> {target}"
 
 
-def create_agent_manager(rtvi_processor: RTVIProcessor = None, task=None, current_page: str = "dashboard") -> AgentManager:
+def create_agent_manager(rtvi_processor: RTVIProcessor = None, task=None, current_page: str = "broadband") -> AgentManager:
     """Factory function to create an AgentManager instance."""
     return AgentManager(rtvi_processor, task, current_page)

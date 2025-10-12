@@ -166,12 +166,6 @@ def validate_environment() -> bool:
         return False
 
 
-def get_restaurant_backend_url() -> str:
-    """Get the restaurant backend URL from environment variables."""
-    url = os.getenv("resturent_backend_url", "@https://176.9.16.194:9105/api/v1/users")
-    logger.info(f"🍽️ Restaurant backend URL: {url}")
-    return url
-
 
 def get_ssl_verify() -> bool:
     """Get SSL verification setting from environment variables."""

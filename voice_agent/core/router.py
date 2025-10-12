@@ -135,7 +135,7 @@ async def retry_with_exponential_backoff(
     return None
 
 
-async def fallback_to_text_mode(websocket: WebSocket, session_id: str, user_id: str, current_page: str = "dashboard"):
+async def fallback_to_text_mode(websocket: WebSocket, session_id: str, user_id: str, current_page: str = "broadband"):
     """Fallback to text-only conversation when voice service fails."""
     logger.info(f"📝 Falling back to text mode for user {user_id} on page {current_page}")
 
@@ -155,7 +155,7 @@ async def fallback_to_text_mode(websocket: WebSocket, session_id: str, user_id: 
             pass
 
 
-async def create_gemini_live_llm(enable_function_calling: bool = True, current_page: str = "dashboard"):
+async def create_gemini_live_llm(enable_function_calling: bool = True, current_page: str = "broadband"):
     """Create Gemini Live LLM service with function calling and page context."""
     settings = get_settings()
 
@@ -221,7 +221,7 @@ async def create_gemini_live_llm(enable_function_calling: bool = True, current_p
     return llm_service, agent_manager
 
 
-async def run_simplified_conversation_bot(websocket: WebSocket, session_id: str, user_id: str, current_page: str = "dashboard"):
+async def run_simplified_conversation_bot(websocket: WebSocket, session_id: str, user_id: str, current_page: str = "broadband"):
     """Run the conversational AI bot with Gemini Live."""
     logger.info(f"🎤 Starting conversation bot - Session: {session_id}, User: {user_id}, Page: {current_page}")
     start_time = time.time()  # Define start_time at function level
@@ -796,7 +796,7 @@ async def run_simplified_conversation_bot(websocket: WebSocket, session_id: str,
             conversation_trace.end()
 
 
-async def run_text_conversation_bot(websocket: WebSocket, session_id: str, user_id: str, current_page: str = "dashboard"):
+async def run_text_conversation_bot(websocket: WebSocket, session_id: str, user_id: str, current_page: str = "broadband"):
     """Run text-only conversation bot."""
     logger.info(f"📝 Starting text bot - Session: {session_id}, User: {user_id}, Page: {current_page}")
 
@@ -883,7 +883,7 @@ async def websocket_endpoint(websocket: WebSocket):
     
     # Be more permissive with current_page validation
     if not current_page:
-        current_page = "dashboard"  # Default page
+        current_page = "broadband"  # Default page
     else:
         # Just normalize, don't reject
         current_page = current_page.strip().lower().replace(" ", "-").replace("_", "-")
@@ -947,7 +947,7 @@ async def tools_websocket_endpoint(websocket: WebSocket):
     
     user_id = user_id.strip()
     
-    current_page = websocket.query_params.get("current_page", "dashboard")
+    current_page = websocket.query_params.get("current_page", "broadband")
     current_page = current_page.strip().lower().replace(" ", "-").replace("_", "-")
     
     await websocket.accept()
@@ -995,7 +995,7 @@ async def text_conversation_websocket_endpoint(websocket: WebSocket):
     user_id = user_id.strip()
     
     if not current_page:
-        current_page = "dashboard"  # Default page instead of closing
+        current_page = "broadband"  # Default page instead of closing
     else:
         # Just normalize, don't reject
         current_page = current_page.strip().lower().replace(" ", "-").replace("_", "-")
@@ -1042,14 +1042,13 @@ async def health_check():
         },
         "conversation_sessions": session_stats,
         "websockets": {
-            "voice_conversation": f"{get_backend_url().replace('https://', 'wss://')}/voice/ws?user_id=your_user_id&current_page=dashboard",
+            "voice_conversation": f"{get_backend_url().replace('https://', 'wss://')}/voice/ws?user_id=your_user_id&current_page=broadband",
             "tools": f"{get_backend_url().replace('https://', 'wss://')}/voice/ws/tools?user_id=your_user_id",
-            "text_conversation": f"{get_backend_url().replace('https://', 'wss://')}/voice/ws/text-conversation?user_id=your_user_id&current_page=dashboard"
+            "text_conversation": f"{get_backend_url().replace('https://', 'wss://')}/voice/ws/text-conversation?user_id=your_user_id&current_page=broadband"
         },
         "endpoints": {
             "health": "/voice/health",
             "connect": "/voice/connect",
-            "test_database_search": "/voice/test-database-search",
             "test_function_call": "/voice/test-function-call"
         }
     }
@@ -1064,7 +1063,7 @@ async def bot_connect(request: Request):
     # Try to get parameters from query first
     query_params = request.query_params
     user_id = query_params.get("user_id")
-    current_page = query_params.get("current_page", "dashboard")
+    current_page = query_params.get("current_page", "broadband")
     
     # Try to get from body if not in query
     if not user_id:
@@ -1101,32 +1100,6 @@ async def bot_connect(request: Request):
     }
 
 
-@router.get("/test-database-search")
-async def test_database_search():
-    """Test database search functionality."""
-    try:
-        # Test if we can create a dashboard tool instance instead
-        from tools.dashboard_tool import create_dashboard_tool
-        from pipecat.processors.frameworks.rtvi import RTVIProcessor, RTVIConfig
-        
-        rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
-        dashboard_tool = create_dashboard_tool(rtvi)
-        
-        return {
-            "message": "Dashboard functionality is available",
-            "tool_available": True,
-            "tool_name": dashboard_tool.get_tool_definition().name,
-            "timestamp": datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"❌ Dashboard test failed: {e}")
-        return {
-            "message": f"Dashboard test failed: {str(e)}",
-            "tool_available": False,
-            "timestamp": datetime.now().isoformat()
-        }
-
-
 @router.get("/test-function-call")
 async def test_function_call():
     """Test function calling capabilities."""
@@ -1153,7 +1126,7 @@ async def test_function_call():
 
 # Memory management endpoints
 @router.get("/memory/{user_id}")
-async def get_user_memory(user_id: str, current_page: str = "dashboard"):
+async def get_user_memory(user_id: str, current_page: str = "broadband"):
     """Get memory for a specific user."""
     agent_key = f"{user_id}_{current_page}"
     if agent_key not in user_text_agents:
@@ -1165,7 +1138,7 @@ async def get_user_memory(user_id: str, current_page: str = "dashboard"):
 
 
 @router.delete("/memory/{user_id}")
-async def clear_user_memory(user_id: str, current_page: str = "dashboard"):
+async def clear_user_memory(user_id: str, current_page: str = "broadband"):
     """Clear memory for a specific user."""
     agent_key = f"{user_id}_{current_page}"
     if agent_key not in user_text_agents:
@@ -1181,7 +1154,7 @@ async def clear_user_memory(user_id: str, current_page: str = "dashboard"):
 
 
 @router.post("/memory/{user_id}/save")
-async def save_user_memory(user_id: str, current_page: str = "dashboard"):
+async def save_user_memory(user_id: str, current_page: str = "broadband"):
     """Save memory for a specific user."""
     agent_key = f"{user_id}_{current_page}"
     if agent_key not in user_text_agents:
@@ -1199,7 +1172,7 @@ async def save_user_memory(user_id: str, current_page: str = "dashboard"):
 
 
 @router.post("/memory/{user_id}/load")
-async def load_user_memory(user_id: str, memory_data: dict, current_page: str = "dashboard"):
+async def load_user_memory(user_id: str, memory_data: dict, current_page: str = "broadband"):
     """Load memory for a specific user."""
     agent_key = f"{user_id}_{current_page}"
     if agent_key not in user_text_agents:

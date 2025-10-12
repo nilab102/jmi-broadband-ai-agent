@@ -24,7 +24,7 @@ class ConversationSession:
     trace_id: Optional[str] = None
     trace: Optional[Any] = None  # The actual trace object for ending
     conversation_type: str = "unified"  # unified, voice, text
-    current_page: str = "dashboard"
+    current_page: str = "broadband"
     metadata: Dict[str, Any] = field(default_factory=dict)
     message_count: int = 0
     is_active: bool = True
@@ -72,7 +72,7 @@ class ConversationManager:
         self.langfuse_tracer = get_langfuse_tracer()
         logger.info("✅ ConversationManager initialized")
 
-    def get_or_create_session(self, user_id: str, conversation_type: str = "unified", current_page: str = "dashboard") -> ConversationSession:
+    def get_or_create_session(self, user_id: str, conversation_type: str = "unified", current_page: str = "broadband") -> ConversationSession:
         """
         Get existing session for user or create a new one.
         Ensures only one active session per user.

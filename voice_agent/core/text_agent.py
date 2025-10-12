@@ -406,7 +406,7 @@ else:
             return f"Mock {self.page_name} action completed"
 
 
-def create_langchain_tools_from_agent_manager(user_id: str, callback_handler=None, current_page: str = "dashboard"):
+def create_langchain_tools_from_agent_manager(user_id: str, callback_handler=None, current_page: str = "broadband"):
     """
     Factory function to create LangChain tools from the modular tool structure.
     Creates page-specific StructuredTools that expose all action types and parameters.
@@ -593,7 +593,7 @@ class LangChainTextAgent:
     - Enhanced error recovery
     """
 
-    def __init__(self, user_id: str, current_page: str = "dashboard"):
+    def __init__(self, user_id: str, current_page: str = "broadband"):
         self.user_id = user_id
         self.current_page = current_page
         self.llm = None
@@ -1100,12 +1100,11 @@ class LangChainTextAgent:
         guidance = f"""
 ## 🔧 AVAILABLE TOOLS FOR CURRENT PAGE ({current_page}):
 
-You have access to {len(tools)} specialized tools. Each tool corresponds to a specific page in the application.
+You have access to {len(tools)} specialized tools for broadband comparison.
 
 ### Tool Selection Rules:
-1. **For navigation**: Use `dashboard_action` tool with action_type="navigate"
-2. **For page-specific actions**: Use the tool that matches the current page or target page
-3. **Check the tool description** to see which page it belongs to
+1. **For broadband operations**: Use `broadband_action` tool with appropriate action_type
+2. **Check the tool description** to see what actions are available
 
 ### Available Tools:
 """
@@ -1118,8 +1117,8 @@ You have access to {len(tools)} specialized tools. Each tool corresponds to a sp
 
 ### Current Page Guidance:
 - You are currently on the **{current_page}** page
-- Use the **{current_page}_action** tool for actions on this page
-- To navigate to other pages, use **dashboard_action** with action_type="navigate"
+- Use the **broadband_action** tool for all broadband comparison operations
+- Available actions include: query, generate_url, get_recommendations, compare_providers, get_cheapest, get_fastest, list_providers, open_url
 
 ### Important:
 - Each tool has specific action_type enums - only use valid action types
@@ -1222,7 +1221,7 @@ Tool Call: broadband_action(
 class MockLangChainAgent:
     """Mock implementation when LangChain is not available."""
 
-    def __init__(self, user_id: str, current_page: str = "dashboard"):
+    def __init__(self, user_id: str, current_page: str = "broadband"):
         self.user_id = user_id
         self.current_page = current_page
         self.memory = []
@@ -1248,13 +1247,13 @@ class MockLangChainAgent:
         return True
 
 
-def create_text_agent(user_id: str, current_page: str = "dashboard"):
+def create_text_agent(user_id: str, current_page: str = "broadband"):
     """
     Factory function to create the appropriate text agent.
     
     Args:
         user_id: User ID for session management
-        current_page: Current page context (default: "dashboard")
+        current_page: Current page context (default: "broadband")
         
     Returns:
         LangChainTextAgent or MockLangChainAgent instance
@@ -1277,7 +1276,7 @@ async def main():
         response1 = await agent.process_message("Hello, how can you help me?")
         print(f"Response 1: {response1}")
 
-        response2 = await agent.process_message("Navigate to the dashboard page")
+        response2 = await agent.process_message("Find broadband deals in London")
         print(f"Response 2: {response2}")
 
         response3 = await agent.process_message("Search for all users created in the last month")

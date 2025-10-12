@@ -13,12 +13,12 @@ def setup_python_path():
     voice_agent_dir = os.path.dirname(os.path.abspath(__file__))
     # Get the parent directory (project root) to allow imports like "voice_agent.core.router"
     project_root = os.path.dirname(voice_agent_dir)
-    
+
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
-    
+
     print(f"✅ Project root added to Python path: {project_root}")
-    return voice_agent_dir
+    return voice_agent_dir, project_root
 
 def validate_environment():
     """Validate environment setup."""
@@ -47,15 +47,24 @@ def main():
     print("🚀 Starting agent voice backend...")
     print("📋 Features: Restructured backend with /voice prefix endpoints")
     print("🔧 Compatible with existing frontend without changes")
-    
+
     # Setup Python path
-    voice_agent_dir = setup_python_path()
-    
+    voice_agent_dir, project_root = setup_python_path()
+
+    # Load environment variables from .env file in project root
+    env_file_path = os.path.join(project_root, '.env')
+    if os.path.exists(env_file_path):
+        from dotenv import load_dotenv
+        load_dotenv(env_file_path, override=False)
+        print("✅ Environment variables loaded from .env file")
+    else:
+        print("⚠️ No .env file found in project root")
+
     # Validate environment
     if not validate_environment():
         print("❌ Failed to start server due to configuration issues")
         sys.exit(1)
-    
+
     # Change to voice_agent directory
     os.chdir(voice_agent_dir)
     
@@ -75,15 +84,19 @@ def main():
         
         # Import the router module and get the app
         from voice_agent.core.router import app
+        from voice_agent.config.environment import get_ssl_config
         import uvicorn
-        
+
+        # Get SSL configuration
+        cert_path, key_path = get_ssl_config()
+
         # Run the FastAPI app
         uvicorn.run(
             app,
             host="0.0.0.0",
             port=8200,
-            ssl_keyfile="./frontend/certificates/localhost-key.pem",
-            ssl_certfile="./frontend/certificates/localhost.pem",
+            ssl_keyfile=key_path,
+            ssl_certfile=cert_path,
             log_level="info"
         )
         
