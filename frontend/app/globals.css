@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    /* Ensure base font size is consistent across zoom levels */
+    font-size: 16px;
+  }
+
+  /* Responsive text sizing for better 100% zoom experience */
+  @media (max-width: 640px) {
+    html {
+      font-size: 14px;
+    }
+  }
+
+  /* Ensure proper viewport handling */
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .voice-button-primary {
+    @apply bg-gradient-to-r from-voice-primary to-voice-secondary text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5;
+  }
+  
+  .voice-button-secondary {
+    @apply bg-voice-muted text-white px-4 py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors;
+  }
+  
+  .voice-button-success {
+    @apply bg-voice-accent text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors;
+  }
+  
+  .voice-button-warning {
+    @apply bg-yellow-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-yellow-600 transition-colors;
+  }
+  
+  .voice-indicator {
+    @apply w-16 h-16 rounded-full bg-voice-primary animate-listening;
+  }
+  
+  .voice-indicator.connected {
+    @apply bg-voice-accent animate-breathing;
+  }
+  
+  .voice-indicator.listening {
+    @apply bg-voice-primary animate-listening;
+  }
+  
+  .crisis-mode {
+    @apply animate-pulse-slow;
+  }
+  
+  .arabic-text {
+    direction: rtl;
+    text-align: right;
+  }
+  
+  .english-text {
+    direction: ltr;
+    text-align: left;
+  }
+
+  /* Responsive utilities for better mobile experience */
+  .container-responsive {
+    @apply max-w-7xl mx-auto px-3 sm:px-4 lg:px-8;
+  }
+
+  .text-responsive {
+    @apply text-sm sm:text-base;
+  }
+
+  .heading-responsive {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+
+  .button-responsive {
+    @apply px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base;
+  }
+
+  .input-responsive {
+    @apply px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base;
+  }
+
+  /* Ensure proper spacing on all screen sizes */
+  .space-responsive {
+    @apply space-y-3 sm:space-y-4 lg:space-y-6;
+  }
+
+  .gap-responsive {
+    @apply gap-2 sm:gap-3 lg:gap-4;
+  }
+
+  /* Better mobile touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Ensure tool results cards are properly responsive */
+  .tool-card-responsive {
+    @apply p-3 sm:p-4 lg:p-6;
+  }
+}
