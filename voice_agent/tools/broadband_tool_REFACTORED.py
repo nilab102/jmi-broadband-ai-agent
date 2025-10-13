@@ -13,12 +13,7 @@ ARCHITECTURE:
 - Delegates to handler functions instead of internal methods
 """
 
-import re
-import json
-import asyncio
-from typing import Dict, Any, Optional, List, Tuple
-from urllib.parse import quote_plus
-from datetime import datetime
+from typing import Dict, Any, Optional
 from loguru import logger
 from pipecat.processors.frameworks.rtvi import RTVIProcessor
 from pipecat.adapters.schemas.function_schema import FunctionSchema
@@ -55,14 +50,7 @@ from voice_agent.functions.broadband import (
     handle_open_url,
     # Helpers
     create_structured_output,
-    normalize_contract_length,
-    validate_uk_postcode_format,
-    interpret_speed_adjective,
-    interpret_phone_calls,
-    interpret_product_type,
-    interpret_sort_preference,
-    extract_contract_lengths,
-    normalize_contract_single
+    normalize_contract_length
 )
 
 # Import AI parameter extraction service
@@ -81,7 +69,7 @@ class BroadbandTool(BaseTool):
     Slim orchestrator for broadband comparison queries.
     Delegates to modular handler functions for all operations.
     """
-
+    
     def __init__(self, rtvi_processor: RTVIProcessor, task=None, initial_current_page: str = "broadband"):
         super().__init__(rtvi_processor, task, initial_current_page)
         self.page_name = "broadband"
@@ -89,7 +77,7 @@ class BroadbandTool(BaseTool):
             "search_deals", "get_recommendations", "compare_providers",
             "find_cheapest", "find_fastest", "refine_search", "list_providers"
         ]
-
+        
         # Initialize services
         self.postal_code_service = get_postal_code_service()
         self.scraper_service = get_scraper_service(headless=True, timeout=30000)
@@ -104,7 +92,7 @@ class BroadbandTool(BaseTool):
                 logger.info("✅ AI parameter extraction enabled")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to initialize AI parameter extractor: {e}")
-
+        
         # Initialize modular components
         self.provider_matcher = ProviderMatcher(
             valid_providers=BroadbandConstants.VALID_PROVIDERS,
@@ -125,18 +113,15 @@ class BroadbandTool(BaseTool):
         self.recommendation_engine = RecommendationEngine(
             recommendation_service=self.recommendation_service
         )
-
-        # Initialize parameter patterns for regex extraction
-        self.parameter_patterns = self._initialize_parameter_patterns()
-
+        
         # State management (use inherited user_sessions for conversation state)
         self.conversation_state = self.user_sessions
         self.scraped_data_cache: Dict[str, Dict[str, Any]] = {}
         self.recommendation_cache: Dict[str, list] = {}
         self.filter_state: Dict[str, Dict[str, Any]] = {}
-
+        
         logger.info("✅ BroadbandTool initialized with modular architecture")
-
+    
     def _create_structured_output(self, user_id: str, action_type: str, param: str, value: str,
                                    interaction_type: str, **additional_fields) -> Dict[str, Any]:
         """
@@ -144,7 +129,7 @@ class BroadbandTool(BaseTool):
         Adds current_page and previous_page from session.
         """
         session = self._initialize_user_session(user_id)
-
+        
         return create_structured_output(
             user_id=user_id,
             action_type=action_type,
@@ -155,382 +140,13 @@ class BroadbandTool(BaseTool):
             previous_page=session.get("previous_page"),
             **additional_fields
         )
-
-    def _validate_uk_postcode_format(self, postcode: str) -> bool:
-        """
-        Validate UK postcode format using official regex pattern.
-        This checks if the postcode matches UK postcode structure before fuzzy search.
-        
-        Pattern covers:
-        - GIR 0AA (special case)
-        - Standard UK formats (A9 9AA, A99 9AA, AA9 9AA, AA99 9AA, A9A 9AA, AA9A 9AA)
-        
-        Args:
-            postcode: Postcode string to validate
-            
-        Returns:
-            True if valid UK postcode format, False otherwise
-        """
-        if not postcode or not postcode.strip():
-            return False
-        
-        # UK postcode regex pattern (allows spaces)
-        uk_postcode_pattern = r'^((GIR\s*0AA)|[A-Z]{1}\d{1}\s*\d{1}[A-Z]{2}|[A-Z]{2}\d{1}\s*\d{1}[A-Z]{2}|[A-Z]{1}\d{2}\s*\d{1}[A-Z]{2}|[A-Z]{2}\d{2}\s*\d{1}[A-Z]{2}|[A-Z]{2}\d{1}[A-Z]{1}\s*\d{1}[A-Z]{2}|[A-Z]{1}\d{1}[A-Z]{1}\s*\d{1}[A-Z]{2})$'
-        
-        # Normalize: uppercase and normalize spaces
-        normalized = postcode.strip().upper()
-        
-        # Try with current spacing
-        if re.match(uk_postcode_pattern, normalized, re.IGNORECASE):
-            return True
-        
-        # Try without spaces (in case user didn't include space)
-        no_space = normalized.replace(' ', '')
-        # Add space before last 3 characters (standard UK format)
-        if len(no_space) >= 5:
-            formatted = no_space[:-3] + ' ' + no_space[-3:]
-            if re.match(uk_postcode_pattern, formatted, re.IGNORECASE):
-                return True
-        
-        return False
-
-    def _initialize_parameter_patterns(self) -> Dict[str, List[Tuple[str, str, callable]]]:
-        """
-        Initialize regex patterns for extracting parameters from natural language.
-        Returns patterns grouped by parameter type.
-        """
-        return {
-            'postcode': [
-                # Most specific UK postcode patterns first
-                (r'\b([A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2})\b', 'postcode', lambda x: x.strip().upper()),
-                (r'\b([A-Z]{1,2}[0-9]{1,2}[A-Z0-9]{0,3})\b', 'postcode', lambda x: x.strip().upper()),
-                # Location at end patterns
-                (r'\b([A-Za-z]+(?:\s+[A-Za-z]+)?)\s*$', 'postcode', lambda x: x.strip().upper()),
-                (r'\b([A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2})\s*$', 'postcode', lambda x: x.strip().upper()),
-                # Fallback patterns
-                (r'\b([A-Za-z0-9]{2,7})\b', 'postcode', lambda x: x.strip().upper()),
-                (r'postcode[:\s]*([A-Za-z0-9\s]{2,10})', 'postcode', lambda x: x.strip().upper()),
-            ],
-            'speed_in_mb': [
-                (r'(\d+)\s*mb?\s*speed', 'speed_in_mb', lambda x: f"{x}Mb"),
-                (r'speed[:\s]*(\d+)\s*mb?', 'speed_in_mb', lambda x: f"{x}Mb"),
-                (r'(\d+)\s*mb?\s*broadband', 'speed_in_mb', lambda x: f"{x}Mb"),
-                (r'(\d+)\s*meg', 'speed_in_mb', lambda x: f"{x}Mb"),
-                (r'fast|superfast|ultrafast', 'speed_in_mb', interpret_speed_adjective),
-            ],
-            'contract_length': [
-                # Broad patterns to capture multiple contract lengths (must come first)
-                (r'(?:contract[:\s]*)?(\d+(?:\s*(?:or|and|,)\s*\d+)+.*?months?)', 'contract_length', extract_contract_lengths),
-                (r'(?:contract[:\s]*)?(\d+.*?months?\s*,.*?months?)', 'contract_length', extract_contract_lengths),
-                # Single contract lengths (existing patterns)
-                (r'(\d+)\s*month\s*contract', 'contract_length', normalize_contract_single),
-                (r'contract[:\s]*(\d+)\s*month', 'contract_length', normalize_contract_single),
-                (r'(\d+)\s*months?', 'contract_length', normalize_contract_single),
-            ],
-            'phone_calls': [
-                (r'phone\s*calls?[:\s]*(\w+)', 'phone_calls', lambda x: x.title()),
-                (r'(evening|weekend|anytime|unlimited)\s*calls?', 'phone_calls', interpret_phone_calls),
-                (r'no\s*(inclusive\s*)?calls?', 'phone_calls', lambda x: "No inclusive"),
-                (r'cheapest\s*calls?', 'phone_calls', lambda x: "Cheapest"),
-            ],
-            'providers': [
-                # Use fuzzy matching function instead of regex
-                (r'(\w+(?:\s+\w+)*)\s*broadband', 'providers', self._extract_provider_with_fuzzy),
-                (r'with\s+(\w+(?:\s+\w+)*)', 'providers', self._extract_provider_with_fuzzy),
-                (r'from\s+(\w+(?:\s+\w+)*)', 'providers', self._extract_provider_with_fuzzy),
-                # Fallback patterns for direct provider names
-                (r'(\w+(?:\s+\w+)*)', 'providers', self._extract_provider_with_fuzzy),
-            ],
-            'product_type': [
-                (r'(broadband|phone|tv)\s*only', 'product_type', interpret_product_type),
-                (r'(broadband|phone|tv)\s*and\s*(broadband|phone|tv)', 'product_type', interpret_product_type),
-            ],
-            'sort_by': [
-                (r'sort\s*by\s*(\w+)', 'sort_by', lambda x: x.title()),
-                (r'cheapest|fastest|recommended', 'sort_by', interpret_sort_preference),
-            ]
-        }
-
-    def _fuzzy_match_provider(self, provider_input: str, threshold: float = 50.0) -> Optional[str]:
-        """
-        Fuzzy match provider name using the existing fuzzy search infrastructure.
-
-        Args:
-            provider_input: Raw provider name input from user
-            threshold: Minimum similarity threshold (default: 50%)
-
-        Returns:
-            Best matching provider name or None if no match above threshold
-        """
-        if not provider_input or not provider_input.strip():
-            return None
-
-        # Check for exact match first (case-insensitive)
-        provider_lower = provider_input.strip().lower()
-        for valid_provider in BroadbandConstants.VALID_PROVIDERS:
-            if provider_lower == valid_provider.lower():
-                return valid_provider
-
-        # Use fuzzy search if available
-        if not self.postal_code_service or not self.postal_code_service.searcher:
-            logger.warning("⚠️ Fuzzy search not available for provider matching")
-            return None
-
-        try:
-            # Use fuzzy search with the provider names as the search space
-            result = self.postal_code_service.searcher.get_fuzzy_results(
-                search_term=provider_input,
-                top_n=1,  # Only need the top match
-                max_candidates=50,  # Limit for performance
-                use_dynamic_distance=True,
-                use_weighted_scoring=True,
-                parallel_threshold=20
-            )
-
-            if result['results']:
-                matched_provider, score = result['results'][0]
-
-                # Check if score is above threshold
-                if score >= threshold:
-                    logger.info(f"🔍 Fuzzy matched '{provider_input}' to '{matched_provider}' (score: {score:.1f}%)")
-                    return matched_provider
-                else:
-                    logger.info(f"🔍 Provider '{provider_input}' below threshold (score: {score:.1f}%, threshold: {threshold}%)")
-                    return None
-            else:
-                return None
-
-        except Exception as e:
-            logger.error(f"❌ Error in fuzzy provider matching: {e}")
-            return None
-
-    def _extract_provider_with_fuzzy(self, match: str) -> str:
-        """
-        Extract provider name using fuzzy matching.
-        This is used as a processor function in parameter patterns.
-
-        Args:
-            match: The matched string from regex pattern
-
-        Returns:
-            Best matching provider name or empty string if no match
-        """
-        if not match or not match.strip():
-            return ""
-
-        # Use fuzzy matching to find the best provider match
-        matched_provider = self._fuzzy_match_provider(match.strip(), threshold=50.0)
-
-        if matched_provider:
-            logger.info(f"🔍 Extracted provider via fuzzy matching: '{match}' -> '{matched_provider}'")
-            return matched_provider
-        else:
-            logger.info(f"🔍 No provider match found for: '{match}'")
-            return ""
-
-    def _extract_providers_with_fuzzy(self, match: str) -> str:
-        """
-        Extract multiple provider names using fuzzy matching.
-        Handles comma-separated provider lists.
-
-        Args:
-            match: The matched string from regex pattern (may contain multiple providers)
-
-        Returns:
-            Comma-separated string of matched provider names or empty string if no matches
-        """
-        if not match or not match.strip():
-            return ""
-
-        # Split by comma and process each provider
-        provider_parts = [p.strip() for p in match.split(',') if p.strip()]
-        matched_providers = []
-
-        for provider in provider_parts:
-            if provider:
-                matched_provider = self._fuzzy_match_provider(provider, threshold=50.0)
-                if matched_provider:
-                    matched_providers.append(matched_provider)
-
-        if matched_providers:
-            result = ','.join(matched_providers)
-            logger.info(f"🔍 Extracted providers via fuzzy matching: '{match}' -> '{result}'")
-            return result
-        else:
-            logger.info(f"🔍 No provider matches found for: '{match}'")
-            return ""
-
-    def extract_parameters_from_query(self, query: str, skip_postcode_validation: bool = False) -> Dict[str, str]:
-        """
-        Extract broadband parameters from natural language query.
-        Uses AI-powered extraction (preferred) with regex fallback.
-
-        Args:
-            query: Natural language query
-            skip_postcode_validation: If True, skip automatic postcode validation (for fuzzy search workflow)
-
-        Returns:
-            Dictionary of extracted parameters
-        """
-        
-        # Try AI extraction first (preferred method)
-        if self.ai_extractor:
-            try:
-                logger.info(f"🤖 Using AI parameter extraction for: {query[:50]}...")
-                
-                # Use synchronous extraction
-                ai_params = self.ai_extractor.extract_parameters_sync(query, context=None)
-                
-                # Check confidence
-                if ai_params.confidence and ai_params.confidence >= 0.5:
-                    # Convert to dictionary and apply defaults
-                    extracted = ai_params.to_dict()
-                    
-                    # Set defaults for missing parameters
-                    defaults = {
-                        'speed_in_mb': '30Mb',
-                        'contract_length': '',
-                        'phone_calls': 'Show me everything',
-                        'product_type': 'broadband,phone',
-                        'providers': '',
-                        'current_provider': '',
-                        'sort_by': 'Recommended',
-                        'new_line': ''
-                    }
-                    
-                    for key, default_value in defaults.items():
-                        if key not in extracted or extracted[key] is None:
-                            extracted[key] = default_value
-                    
-                    # Remove 'intent' key as it's not used in URL generation
-                    extracted.pop('intent', None)
-                    
-                    logger.info(f"✅ AI extraction successful (confidence: {ai_params.confidence:.2f}): {extracted}")
-                    return extracted
-                else:
-                    logger.warning(f"⚠️ AI extraction confidence too low ({ai_params.confidence}), falling back to regex")
-            
-            except Exception as e:
-                logger.warning(f"⚠️ AI extraction failed, falling back to regex: {e}")
-        
-        # Fallback to regex-based extraction
-        logger.info(f"📡 Using regex-based parameter extraction for: {query[:50]}...")
-        return self._extract_parameters_regex(query, skip_postcode_validation)
     
-    def _extract_parameters_regex(self, query: str, skip_postcode_validation: bool = False) -> Dict[str, str]:
-        """
-        Legacy regex-based parameter extraction (fallback method).
-
-        Args:
-            query: Natural language query
-            skip_postcode_validation: If True, skip automatic postcode validation (for fuzzy search workflow)
-
-        Returns:
-            Dictionary of extracted parameters
-        """
-        query_lower = query.lower()
-        extracted = {}
-
-        # Extract parameters using patterns
-        for param_type, patterns in self.parameter_patterns.items():
-            for pattern, key, processor in patterns:
-                match = re.search(pattern, query_lower, re.IGNORECASE)
-                if match:
-                    processed_value = processor(match.group(1) if match.groups() else match.group(0))
-                    if processed_value:
-                        # Only set if not already set (for regular params) or always set (for filter params)
-                        if key not in extracted:
-                            extracted[key] = processed_value
-                        elif key.startswith('filter_'):
-                            # For filter parameters, always update
-                            extracted[key] = processed_value
-                        break
-
-        # Handle special cases and defaults
-        if 'postcode' not in extracted:
-            # Extract postcode from query (without fuzzy search for now)
-            postcode_match = self._extract_postcode_from_query(query)
-            if postcode_match:
-                extracted['postcode'] = postcode_match
-
-        # Set defaults for missing parameters
-        defaults = {
-            'speed_in_mb': '30Mb',
-            'contract_length': '',
-            'phone_calls': 'Show me everything',
-            'product_type': 'broadband,phone',
-            'providers': '',
-            'current_provider': '',
-            'sort_by': 'Recommended',
-            'new_line': ''
-        }
-
-        for key, default_value in defaults.items():
-            if key not in extracted:
-                extracted[key] = default_value
-
-        # DON'T validate postcode automatically - let the fuzzy search workflow handle it
-        # This allows us to show suggestions to the user first
-
-        logger.info(f"📡 Regex extracted parameters from query '{query}': {extracted}")
-        return extracted
-
-    def _extract_postcode_from_query(self, query: str) -> Optional[str]:
-        """
-        Extract postcode-like string from query without validation.
-        This is the first step before fuzzy search.
-        """
-        # Simple pattern to find postcode-like strings
-        patterns = [
-            r'\b([A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2})\b',  # Full UK postcode format
-            r'\b([A-Z]{1,2}[0-9]{1,2}[A-Z0-9]{0,3})\b',  # Partial postcode
-            r'\b([A-Za-z]{1,2}[0-9]{1,2}\s?[0-9]?[A-Za-z]{0,3})\b',  # Flexible postcode-like
-        ]
-
-        query_upper = query.upper()
-        for pattern in patterns:
-            match = re.search(pattern, query_upper)
-            if match:
-                return match.group(1).strip()
-
-        return None
-
-    def _apply_filters(self, deals: List[Dict], filters: Dict[str, Any]) -> List[Dict]:
-        """Apply filters to the deals list."""
-        filtered_deals = deals
-
-        # Filter by speed
-        if 'speed' in filters:
-            target_speed = int(filters['speed'].replace('Mb', ''))
-            filtered_deals = [deal for deal in filtered_deals if int(deal['speed']['numeric']) >= target_speed]
-
-        # Filter by providers
-        if 'providers' in filters and filters['providers']:
-            provider_list = [p.strip() for p in filters['providers'].split(',')]
-            filtered_deals = [deal for deal in filtered_deals if deal['provider']['name'] in provider_list]
-
-        # Filter by contract length
-        if 'contract' in filters:
-            target_contract = filters['contract']
-            filtered_deals = [deal for deal in filtered_deals if target_contract in deal['contract']['length_months']]
-
-        # Filter by phone calls
-        if 'phone_calls' in filters and filters['phone_calls'] != 'Show me everything':
-            target_calls = filters['phone_calls']
-            filtered_deals = [deal for deal in filtered_deals if target_calls.lower() in deal['features']['phone_calls'].lower()]
-
-        # Filter by new line option
-        if 'new_line' in filters and filters['new_line']:
-            pass  # This is a URL-level parameter, filtering would need different URLs
-
-        return filtered_deals
-
     async def _handle_clarify(self, user_id: str, message: str = None, context: str = None) -> str:
         """Wrapper for handle_clarify_missing_params."""
         return await handle_clarify_missing_params(
-                user_id=user_id,
+            user_id=user_id,
             custom_message=message,
-                context=context,
+            context=context,
             send_websocket_fn=self.send_websocket_message,
             create_output_fn=self._create_structured_output
         )
@@ -538,7 +154,7 @@ class BroadbandTool(BaseTool):
     async def _handle_filter(self, user_id: str, **kwargs) -> str:
         """Wrapper for handle_filter_data."""
         return await handle_filter_data(
-                user_id=user_id,
+            user_id=user_id,
             conversation_state=self.conversation_state,
             filter_state=self.filter_state,
             send_websocket_fn=self.send_websocket_message,
@@ -549,7 +165,7 @@ class BroadbandTool(BaseTool):
     async def _handle_scrape(self, user_id: str, **kwargs) -> str:
         """Wrapper for handle_scrape_data."""
         return await handle_scrape_data(
-                        user_id=user_id,
+            user_id=user_id,
             url_generator=self.url_generator_service,
             scraper_service=self.scraper_service,
             scraped_data_cache=self.scraped_data_cache,
@@ -558,7 +174,7 @@ class BroadbandTool(BaseTool):
             create_output_fn=self._create_structured_output,
             **kwargs
         )
-
+    
     def get_tool_definition(self) -> FunctionSchema:
         """Get the tool definition for the LLM."""
         return FunctionSchema(
@@ -656,7 +272,7 @@ class BroadbandTool(BaseTool):
             },
             required=["user_id", "action_type"]
         )
-
+    
     async def execute(self, user_id: str, action_type: str, **kwargs) -> str:
         """
         Execute broadband action by delegating to modular handler functions.
@@ -668,33 +284,23 @@ class BroadbandTool(BaseTool):
             # Initialize user session
             self._initialize_user_session(user_id)
             current_page = self.get_user_current_page(user_id)
-
+            
             logger.info(f"📡 Broadband action - User: {user_id}, Action: {action_type}, Page: {current_page}")
-
+            
             # Validate page
             expected_pages = [self.page_name, self.page_name.replace("/", "-")]
             if current_page not in expected_pages:
                 return f"❌ Broadband operations are only available on the {self.page_name} page. Current page: {current_page}"
-
+            
             # Extract common parameters
             context = kwargs.get('context')
             
             # Route to appropriate handler with dependency injection
             if action_type == "query":
-                # Validate query parameter
-                query = kwargs.get('query')
-                if not query or not isinstance(query, str) or not query.strip():
-                    logger.warning(f"⚠️ Invalid or empty query received for user {user_id}")
-                    return await self._handle_clarify(
-                        user_id,
-                        f"I need a valid broadband search query. Please provide what you're looking for (e.g., 'Find broadband deals in E14 9WB with 100Mb speed').",
-                        context
-                    )
-
                 return await handle_natural_language_query(
-                            user_id=user_id,
-                    query=query,
-                            context=context,
+                    user_id=user_id,
+                    query=kwargs.get('query'),
+                    context=context,
                     parameter_extractor=self.parameter_extractor,
                     postcode_validator=self.postcode_validator,
                     url_generator=self.url_generator_service,
@@ -707,7 +313,7 @@ class BroadbandTool(BaseTool):
             
             elif action_type == "generate_url":
                 return await handle_generate_url(
-                user_id=user_id,
+                    user_id=user_id,
                     postcode=kwargs.get('postcode'),
                     speed_in_mb=kwargs.get('speed_in_mb'),
                     contract_length=kwargs.get('contract_length'),
@@ -717,7 +323,7 @@ class BroadbandTool(BaseTool):
                     current_provider=kwargs.get('current_provider'),
                     sort_by=kwargs.get('sort_by'),
                     new_line=kwargs.get('new_line'),
-                context=context,
+                    context=context,
                     url_generator=self.url_generator_service,
                     send_websocket_fn=self.send_websocket_message,
                     create_output_fn=self._create_structured_output,
@@ -740,7 +346,7 @@ class BroadbandTool(BaseTool):
             
             elif action_type == "get_recommendations":
                 return await self.recommendation_engine.handle_get_recommendations(
-                user_id=user_id,
+                    user_id=user_id,
                     postcode=kwargs.get('postcode'),
                     speed_in_mb=kwargs.get('speed_in_mb'),
                     contract_length=kwargs.get('contract_length'),
@@ -749,7 +355,7 @@ class BroadbandTool(BaseTool):
                     providers=kwargs.get('providers'),
                     current_provider=kwargs.get('current_provider'),
                     new_line=kwargs.get('new_line'),
-                context=context,
+                    context=context,
                     conversation_state=self.conversation_state,
                     recommendation_cache=self.recommendation_cache,
                     scrape_data_fn=self._handle_scrape,
@@ -759,13 +365,13 @@ class BroadbandTool(BaseTool):
             
             elif action_type == "compare_providers":
                 return await handle_compare_providers(
-                user_id=user_id,
+                    user_id=user_id,
                     providers=kwargs.get('providers'),
                     postcode=kwargs.get('postcode'),
                     speed_in_mb=kwargs.get('speed_in_mb'),
                     current_provider=kwargs.get('current_provider'),
                     new_line=kwargs.get('new_line'),
-                context=context,
+                    context=context,
                     conversation_state=self.conversation_state,
                     scrape_data_fn=self._handle_scrape,
                     send_websocket_fn=self.send_websocket_message,
@@ -774,11 +380,11 @@ class BroadbandTool(BaseTool):
             
             elif action_type == "get_cheapest":
                 return await handle_get_cheapest(
-                user_id=user_id,
+                    user_id=user_id,
                     postcode=kwargs.get('postcode'),
                     current_provider=kwargs.get('current_provider'),
                     new_line=kwargs.get('new_line'),
-                context=context,
+                    context=context,
                     conversation_state=self.conversation_state,
                     scrape_data_fn=self._handle_scrape,
                     send_websocket_fn=self.send_websocket_message,
@@ -787,11 +393,11 @@ class BroadbandTool(BaseTool):
             
             elif action_type == "get_fastest":
                 return await handle_get_fastest(
-            user_id=user_id,
+                    user_id=user_id,
                     postcode=kwargs.get('postcode'),
                     current_provider=kwargs.get('current_provider'),
                     new_line=kwargs.get('new_line'),
-            context=context,
+                    context=context,
                     conversation_state=self.conversation_state,
                     scrape_data_fn=self._handle_scrape,
                     send_websocket_fn=self.send_websocket_message,
@@ -800,9 +406,9 @@ class BroadbandTool(BaseTool):
             
             elif action_type == "refine_search":
                 return await handle_refine_search(
-                        user_id=user_id,
+                    user_id=user_id,
                     contract_length=kwargs.get('contract_length'),
-                        context=context,
+                    context=context,
                     conversation_state=self.conversation_state,
                     url_generator=self.url_generator_service,
                     send_websocket_fn=self.send_websocket_message,
@@ -811,8 +417,8 @@ class BroadbandTool(BaseTool):
             
             elif action_type == "list_providers":
                 return await handle_list_providers(
-            user_id=user_id,
-            context=context,
+                    user_id=user_id,
+                    context=context,
                     valid_providers=BroadbandConstants.VALID_PROVIDERS,
                     send_websocket_fn=self.send_websocket_message,
                     create_output_fn=self._create_structured_output
@@ -831,16 +437,16 @@ class BroadbandTool(BaseTool):
             
             elif action_type == "open_url":
                 return await handle_open_url(
-            user_id=user_id,
+                    user_id=user_id,
                     url=kwargs.get('url'),
-            context=context,
+                    context=context,
                     send_websocket_fn=self.send_websocket_message,
                     create_output_fn=self._create_structured_output
                 )
             
             else:
                 return f"❌ Invalid action type: {action_type}"
-
+        
         except Exception as e:
             logger.error(f"❌ Error executing broadband tool: {e}")
             import traceback

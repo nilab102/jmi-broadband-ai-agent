@@ -80,6 +80,7 @@ from voice_agent.core.websocket_registry import (
     get_all_users, send_to_user_tool_websocket
 )
 from voice_agent.core.text_agent import create_text_agent
+from voice_agent.core.voice_agent import create_voice_agent
 from voice_agent.core.conversation_manager import get_conversation_manager
 from voice_agent.utils.validators import validate_page_name, validate_api_key
 from voice_agent.utils.langfuse_tracing import get_langfuse_tracer, log_api_call, setup_tracing
@@ -222,7 +223,34 @@ async def create_gemini_live_llm(enable_function_calling: bool = True, current_p
 
 
 async def run_simplified_conversation_bot(websocket: WebSocket, session_id: str, user_id: str, current_page: str = "broadband"):
-    """Run the conversational AI bot with Gemini Live."""
+    """
+    Run the conversational AI bot with Gemini Live.
+    Now uses the refactored VoiceAgent class for better code organization.
+    """
+    logger.info(f"🎤 Starting conversation bot - Session: {session_id}, User: {user_id}, Page: {current_page}")
+    
+    try:
+        # Create and initialize voice agent
+        voice_agent = await create_voice_agent(
+            user_id=user_id,
+            session_id=session_id,
+            websocket=websocket,
+            current_page=current_page
+        )
+        
+        # Run the voice pipeline
+        await voice_agent.run()
+    
+    except Exception as e:
+        logger.error(f"❌ Voice agent error: {e}")
+        raise
+
+
+async def run_simplified_conversation_bot_legacy(websocket: WebSocket, session_id: str, user_id: str, current_page: str = "broadband"):
+    """
+    LEGACY: Original implementation kept for reference.
+    This function is no longer used - see run_simplified_conversation_bot above.
+    """
     logger.info(f"🎤 Starting conversation bot - Session: {session_id}, User: {user_id}, Page: {current_page}")
     start_time = time.time()  # Define start_time at function level
 
