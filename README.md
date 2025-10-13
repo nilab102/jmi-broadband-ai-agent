@@ -30,15 +30,13 @@ cd frontend && npm install && npm run dev
 
 ### Step-by-Step Setup
 
-#### Backend Setup
+#### Backend Setup (Terminal 1)
 ```bash
 # 1. Create Python virtual environment
 python3.13 -m venv venv
 
 # 2. Activate virtual environment
-source venv/bin/activate  # On macOS/Linux
-# OR
-venv\Scripts\activate  # On Windows
+source venv/bin/activate
 
 # 3. Install dependencies
 pip install -r jmi_broadband_agent/requirements.txt
@@ -49,7 +47,7 @@ python main.py
 
 Backend will be running on `https://localhost:8200` 🚀
 
-#### Frontend Setup
+#### Frontend Setup (Terminal 2)
 ```bash
 # 1. Navigate to frontend directory
 cd frontend
