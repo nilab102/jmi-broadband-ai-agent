@@ -65,13 +65,9 @@ from voice_agent.functions.broadband import (
     normalize_contract_single
 )
 
-# Import AI parameter extraction service
-try:
-    from voice_agent.tools.parameter_extraction_service import get_parameter_extractor
-    AI_EXTRACTION_AVAILABLE = True
-except ImportError as e:
-    AI_EXTRACTION_AVAILABLE = False
-    logger.warning(f"⚠️ AI parameter extraction not available: {e}")
+# AI parameter extraction is now handled by the modular ParameterExtractor class
+# which gracefully falls back to regex extraction if AI is not available
+AI_EXTRACTION_AVAILABLE = False  # Not needed anymore with modular architecture
 
 from voice_agent.tools.base_tool import BaseTool
 
@@ -96,14 +92,8 @@ class BroadbandTool(BaseTool):
         self.url_generator_service = get_url_generator_service()
         self.recommendation_service = get_recommendation_service()
         
-        # Initialize AI parameter extractor if available
-        self.ai_extractor = None
-        if AI_EXTRACTION_AVAILABLE:
-            try:
-                self.ai_extractor = get_parameter_extractor()
-                logger.info("✅ AI parameter extraction enabled")
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to initialize AI parameter extractor: {e}")
+        # AI parameter extraction is handled by the ParameterExtractor class
+        # which gracefully falls back to regex if AI services are unavailable
 
         # Initialize modular components
         self.provider_matcher = ProviderMatcher(
@@ -112,7 +102,7 @@ class BroadbandTool(BaseTool):
         )
         
         self.parameter_extractor = ParameterExtractor(
-            ai_extractor=self.ai_extractor,
+            ai_extractor=None,  # AI extraction handled internally by ParameterExtractor
             provider_matcher=self.provider_matcher
         )
         self.parameter_extractor.initialize_patterns()
@@ -138,7 +128,7 @@ class BroadbandTool(BaseTool):
         logger.info("✅ BroadbandTool initialized with modular architecture")
 
     def _create_structured_output(self, user_id: str, action_type: str, param: str, value: str,
-                                   interaction_type: str, **additional_fields) -> Dict[str, Any]:
+                                 interaction_type: str, **additional_fields) -> Dict[str, Any]:
         """
         Wrapper for create_structured_output helper function.
         Adds current_page and previous_page from session.
@@ -363,7 +353,7 @@ class BroadbandTool(BaseTool):
     def extract_parameters_from_query(self, query: str, skip_postcode_validation: bool = False) -> Dict[str, str]:
         """
         Extract broadband parameters from natural language query.
-        Uses AI-powered extraction (preferred) with regex fallback.
+        Delegates to the modular ParameterExtractor instance.
 
         Args:
             query: Natural language query
@@ -372,50 +362,8 @@ class BroadbandTool(BaseTool):
         Returns:
             Dictionary of extracted parameters
         """
-        
-        # Try AI extraction first (preferred method)
-        if self.ai_extractor:
-            try:
-                logger.info(f"🤖 Using AI parameter extraction for: {query[:50]}...")
-                
-                # Use synchronous extraction
-                ai_params = self.ai_extractor.extract_parameters_sync(query, context=None)
-                
-                # Check confidence
-                if ai_params.confidence and ai_params.confidence >= 0.5:
-                    # Convert to dictionary and apply defaults
-                    extracted = ai_params.to_dict()
-                    
-                    # Set defaults for missing parameters
-                    defaults = {
-                        'speed_in_mb': '30Mb',
-                        'contract_length': '',
-                        'phone_calls': 'Show me everything',
-                        'product_type': 'broadband,phone',
-                        'providers': '',
-                        'current_provider': '',
-                        'sort_by': 'Recommended',
-                        'new_line': ''
-                    }
-                    
-                    for key, default_value in defaults.items():
-                        if key not in extracted or extracted[key] is None:
-                            extracted[key] = default_value
-                    
-                    # Remove 'intent' key as it's not used in URL generation
-                    extracted.pop('intent', None)
-                    
-                    logger.info(f"✅ AI extraction successful (confidence: {ai_params.confidence:.2f}): {extracted}")
-                    return extracted
-                else:
-                    logger.warning(f"⚠️ AI extraction confidence too low ({ai_params.confidence}), falling back to regex")
-            
-            except Exception as e:
-                logger.warning(f"⚠️ AI extraction failed, falling back to regex: {e}")
-        
-        # Fallback to regex-based extraction
-        logger.info(f"📡 Using regex-based parameter extraction for: {query[:50]}...")
-        return self._extract_parameters_regex(query, skip_postcode_validation)
+        # Delegate to the modular parameter extractor
+        return self.parameter_extractor.extract_parameters(query, skip_postcode_validation)
     
     def _extract_parameters_regex(self, query: str, skip_postcode_validation: bool = False) -> Dict[str, str]:
         """
@@ -545,6 +493,255 @@ class BroadbandTool(BaseTool):
             create_output_fn=self._create_structured_output,
             **kwargs
         )
+
+    async def _handle_parameter_update(
+        self,
+        user_id: str,
+        postcode: str = None,
+        speed_in_mb: str = None,
+        contract_length: str = None,
+        phone_calls: str = None,
+        providers: str = None,
+        current_provider: str = None,
+        sort_by: str = None,
+        new_line: str = None,
+        product_type: str = None,
+        context: str = None
+    ) -> str:
+        """
+        Handle parameter updates in conversational flow.
+        Accumulates parameters and auto-generates URLs when sufficient info is available.
+
+        Args:
+            user_id: User ID
+            postcode: Postcode (if provided)
+            speed_in_mb: Speed requirement (if provided)
+            contract_length: Contract length (if provided)
+            phone_calls: Phone calls preference (if provided)
+            providers: Provider preference (if provided)
+            current_provider: Current provider (if provided)
+            sort_by: Sort preference (if provided)
+            new_line: New line option (if provided)
+            product_type: Product type (if provided)
+            context: Additional context
+
+        Returns:
+            Response message with current status
+        """
+        try:
+            # Initialize user session if needed
+            session = self._initialize_user_session(user_id)
+
+            # Get current broadband parameters from session
+            current_params = session.get('broadband_params', {})
+
+            # Update parameters with new values (only if provided)
+            updated_params = current_params.copy()
+
+            if postcode:
+                updated_params['postcode'] = postcode
+                logger.info(f"📍 Updated postcode for user {user_id}: {postcode}")
+
+            if speed_in_mb:
+                updated_params['speed_in_mb'] = speed_in_mb
+                logger.info(f"⚡ Updated speed for user {user_id}: {speed_in_mb}")
+
+            if contract_length:
+                # Normalize contract length
+                if contract_length:
+                    contract_length = normalize_contract_length(contract_length)
+                updated_params['contract_length'] = contract_length
+                logger.info(f"📅 Updated contract for user {user_id}: {contract_length}")
+
+            if phone_calls:
+                updated_params['phone_calls'] = phone_calls
+                logger.info(f"📞 Updated phone calls for user {user_id}: {phone_calls}")
+
+            if providers:
+                # Apply fuzzy matching to correct provider names
+                corrected_providers = []
+                for provider in providers.split(','):
+                    provider = provider.strip()
+                    if provider:
+                        matched_provider = self.provider_matcher.fuzzy_match(provider)
+                        if matched_provider:
+                            corrected_providers.append(matched_provider)
+                            logger.info(f"🔍 Corrected provider '{provider}' to '{matched_provider}'")
+                        else:
+                            corrected_providers.append(provider)
+                            logger.warning(f"⚠️ Could not match provider '{provider}'")
+
+                updated_params['providers'] = ','.join(corrected_providers)
+                logger.info(f"🏢 Updated providers for user {user_id}: {updated_params['providers']}")
+
+            if current_provider:
+                # Apply fuzzy matching to correct current provider name
+                matched_provider = self.provider_matcher.fuzzy_match(current_provider)
+                if matched_provider:
+                    updated_params['current_provider'] = matched_provider
+                    logger.info(f"🔍 Corrected current provider '{current_provider}' to '{matched_provider}'")
+                else:
+                    updated_params['current_provider'] = current_provider
+                    logger.warning(f"⚠️ Could not match current provider '{current_provider}'")
+                logger.info(f"🏠 Updated current provider for user {user_id}: {updated_params['current_provider']}")
+
+            if sort_by:
+                updated_params['sort_by'] = sort_by
+                logger.info(f"📊 Updated sort by for user {user_id}: {sort_by}")
+
+            if new_line:
+                updated_params['new_line'] = new_line
+                logger.info(f"🆕 Updated new line for user {user_id}: {new_line}")
+
+            if product_type:
+                updated_params['product_type'] = product_type
+                logger.info(f"📦 Updated product type for user {user_id}: {product_type}")
+
+            # Set defaults for missing parameters
+            defaults = {
+                'speed_in_mb': '30Mb',
+                'contract_length': '',
+                'phone_calls': 'Show me everything',
+                'product_type': 'broadband,phone',
+                'providers': '',
+                'current_provider': '',
+                'sort_by': 'Recommended',
+                'new_line': ''
+            }
+
+            for key, default_value in defaults.items():
+                if key not in updated_params:
+                    updated_params[key] = default_value
+
+            # Store updated parameters in session
+            session['broadband_params'] = updated_params
+            self.user_sessions[user_id] = session
+
+            # Check if we have minimum required parameters (postcode + speed)
+            has_postcode = updated_params.get('postcode')
+            has_speed = updated_params.get('speed_in_mb')
+
+            response_parts = []
+
+            if has_postcode and has_speed:
+                # We have enough info to generate a URL
+                logger.info(f"🎯 Sufficient parameters for URL generation: postcode={has_postcode}, speed={has_speed}")
+
+                # Validate postcode if it's new
+                if postcode and not session.get('postcode_validated'):
+                    # Validate postcode format
+                    if not self._validate_uk_postcode_format(has_postcode):
+                        return await self._handle_clarify(
+                            user_id,
+                            f"'{has_postcode}' doesn't look like a valid UK postcode. Please provide a valid postcode (e.g., E14 9WB).",
+                            context
+                        )
+
+                    # Mark as validated
+                    session['postcode_validated'] = True
+                    self.user_sessions[user_id] = session
+
+                # Generate URL
+                url = self.url_generator_service.generate_url(updated_params)
+
+                # Send WebSocket message for URL generation
+                if self.send_websocket_message and self._create_structured_output:
+                    structured_output = self._create_structured_output(
+                        user_id=user_id,
+                        action_type="url_generated",
+                        param="url,postcode",
+                        value=f"{url},{updated_params['postcode']}",
+                        interaction_type="url_generation",
+                        clicked=False,
+                        element_name="auto_generate_url",
+                        context=context,
+                        generated_params=updated_params,
+                        generated_url=url
+                    )
+
+                    await self.send_websocket_message(
+                        message_type="url_action",
+                        action="url_generated",
+                        data=structured_output
+                    )
+
+                response_parts.append(f"✅ **URL Updated!**\n\n**Current Settings:**")
+                response_parts.append(f"• Postcode: {updated_params['postcode']}")
+                response_parts.append(f"• Speed: {updated_params['speed_in_mb']}")
+                if updated_params.get('contract_length'):
+                    response_parts.append(f"• Contract: {updated_params['contract_length']}")
+                if updated_params.get('phone_calls') and updated_params['phone_calls'] != 'Show me everything':
+                    response_parts.append(f"• Phone Calls: {updated_params['phone_calls']}")
+                if updated_params.get('providers'):
+                    response_parts.append(f"• Preferred Providers: {updated_params['providers']}")
+                if updated_params.get('current_provider'):
+                    response_parts.append(f"• Current Provider: {updated_params['current_provider']}")
+                if updated_params.get('sort_by') and updated_params['sort_by'] != 'Recommended':
+                    response_parts.append(f"• Sort By: {updated_params['sort_by']}")
+                if updated_params.get('new_line'):
+                    response_parts.append(f"• New Line: {updated_params['new_line']}")
+                if updated_params.get('product_type') and updated_params['product_type'] != 'broadband,phone':
+                    response_parts.append(f"• Product Type: {updated_params['product_type']}")
+
+                response_parts.append(f"\n**Comparison URL:** {url}")
+                response_parts.append(f"\n💡 **Next steps you can ask me:**")
+                response_parts.append(f"• 'Show me recommendations' - Get personalized suggestions")
+                response_parts.append(f"• 'Compare providers' - Compare specific broadband providers")
+                response_parts.append(f"• 'Find cheapest deals' - Show the lowest priced options")
+                response_parts.append(f"• 'Change to 100Mb speed' - Update your speed preference")
+                response_parts.append(f"• '12 month contract' - Update contract length")
+                response_parts.append(f"• 'Sort by price' - Change sorting preference")
+                response_parts.append(f"• 'Include new line' - Add new line installation")
+                response_parts.append(f"• 'Just broadband only' - Change product type")
+                response_parts.append(f"• 'My current provider is BT' - Set current provider")
+
+            else:
+                # Missing required parameters
+                response_parts.append("📝 **Parameters Updated!**")
+                response_parts.append(f"\n**Current Settings:**")
+
+                if has_postcode:
+                    response_parts.append(f"• Postcode: {updated_params['postcode']}")
+                else:
+                    response_parts.append(f"• Postcode: Not set")
+
+                if has_speed:
+                    response_parts.append(f"• Speed: {updated_params['speed_in_mb']}")
+                else:
+                    response_parts.append(f"• Speed: Not set (default: 30Mb)")
+
+                if updated_params.get('contract_length'):
+                    response_parts.append(f"• Contract: {updated_params['contract_length']}")
+                if updated_params.get('phone_calls') and updated_params['phone_calls'] != 'Show me everything':
+                    response_parts.append(f"• Phone Calls: {updated_params['phone_calls']}")
+                if updated_params.get('providers'):
+                    response_parts.append(f"• Preferred Providers: {updated_params['providers']}")
+                if updated_params.get('current_provider'):
+                    response_parts.append(f"• Current Provider: {updated_params['current_provider']}")
+                if updated_params.get('sort_by') and updated_params['sort_by'] != 'Recommended':
+                    response_parts.append(f"• Sort By: {updated_params['sort_by']}")
+                if updated_params.get('new_line'):
+                    response_parts.append(f"• New Line: {updated_params['new_line']}")
+                if updated_params.get('product_type') and updated_params['product_type'] != 'broadband,phone':
+                    response_parts.append(f"• Product Type: {updated_params['product_type']}")
+
+                missing = []
+                if not has_postcode:
+                    missing.append("postcode")
+                if not has_speed:
+                    missing.append("speed preference")
+
+                if missing:
+                    response_parts.append(f"\n⚠️ **Still need:** {', '.join(missing)}")
+                    response_parts.append(f"\n💡 **Example:** 'I want 55Mb speed' or 'Postcode is E14 9WB'")
+
+            return "\n".join(response_parts)
+
+        except Exception as e:
+            logger.error(f"❌ Error handling parameter update: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return f"❌ Error updating broadband parameters: {str(e)}"
     
     async def _handle_scrape(self, user_id: str, **kwargs) -> str:
         """Wrapper for handle_scrape_data."""
@@ -563,7 +760,7 @@ class BroadbandTool(BaseTool):
         """Get the tool definition for the LLM."""
         return FunctionSchema(
             name="broadband_action",
-            description="Handle broadband comparison queries with natural language processing, URL generation, and AI-powered recommendations. Only available on the broadband page. NEW: Postcode validation is AUTOMATIC - validates format with regex, searches database using fuzzy matching, and auto-selects best match (100% match or highest score). NO user confirmation needed!",
+            description="Handle broadband comparison queries with natural language processing, URL generation, and AI-powered recommendations. Only available on the broadband page. CONVERSATIONAL MODE: Supports building broadband requirements piece by piece. Provide parameters individually (postcode, speed, contract, etc.) and URLs auto-generate when sufficient info is available. Postcode validation is AUTOMATIC - validates format with regex, searches database using fuzzy matching, and auto-selects best match (100% match or highest score). NO user confirmation needed!",
             properties={
                 "user_id": {
                     "type": "string",
@@ -681,29 +878,40 @@ class BroadbandTool(BaseTool):
             
             # Route to appropriate handler with dependency injection
             if action_type == "query":
-                # Validate query parameter
+                # Handle both natural language queries and parameter-based queries
                 query = kwargs.get('query')
-                if not query or not isinstance(query, str) or not query.strip():
-                    logger.warning(f"⚠️ Invalid or empty query received for user {user_id}")
-                    return await self._handle_clarify(
-                        user_id,
-                        f"I need a valid broadband search query. Please provide what you're looking for (e.g., 'Find broadband deals in E14 9WB with 100Mb speed').",
-                        context
+
+                # If we have a natural language query, process it normally
+                if query and isinstance(query, str) and query.strip():
+                    return await handle_natural_language_query(
+                        user_id=user_id,
+                        query=query,
+                        context=context,
+                        parameter_extractor=self.parameter_extractor,
+                        postcode_validator=self.postcode_validator,
+                        url_generator=self.url_generator_service,
+                        conversation_state=self.conversation_state,
+                        send_websocket_fn=self.send_websocket_message,
+                        create_output_fn=self._create_structured_output,
+                        handle_clarify_fn=self._handle_clarify,
+                        handle_filter_fn=self._handle_filter
                     )
 
-                return await handle_natural_language_query(
-                            user_id=user_id,
-                    query=query,
-                            context=context,
-                    parameter_extractor=self.parameter_extractor,
-                    postcode_validator=self.postcode_validator,
-                    url_generator=self.url_generator_service,
-                    conversation_state=self.conversation_state,
-                    send_websocket_fn=self.send_websocket_message,
-                    create_output_fn=self._create_structured_output,
-                    handle_clarify_fn=self._handle_clarify,
-                    handle_filter_fn=self._handle_filter
-                )
+                # If no query but individual parameters provided, handle as parameter update
+                else:
+                    return await self._handle_parameter_update(
+                        user_id=user_id,
+                        postcode=kwargs.get('postcode'),
+                        speed_in_mb=kwargs.get('speed_in_mb'),
+                        contract_length=kwargs.get('contract_length'),
+                        phone_calls=kwargs.get('phone_calls'),
+                        providers=kwargs.get('providers'),
+                        current_provider=kwargs.get('current_provider'),
+                        sort_by=kwargs.get('sort_by'),
+                        new_line=kwargs.get('new_line'),
+                        product_type=kwargs.get('product_type'),
+                        context=context
+                    )
             
             elif action_type == "generate_url":
                 return await handle_generate_url(

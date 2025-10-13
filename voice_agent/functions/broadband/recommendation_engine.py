@@ -70,8 +70,16 @@ class RecommendationEngine:
                 if scrape_data_fn:
                     postcode = postcode or 'E14 9WB'
                     await scrape_data_fn(
-                        user_id, postcode, speed_in_mb, contract_length,
-                        phone_calls, product_type, providers, current_provider, new_line, context
+                        user_id=user_id,
+                        postcode=postcode,
+                        speed_in_mb=speed_in_mb,
+                        contract_length=contract_length,
+                        phone_calls=phone_calls,
+                        product_type=product_type,
+                        providers=providers,
+                        current_provider=current_provider,
+                        new_line=new_line,
+                        context=context
                     )
                 else:
                     return "❌ Unable to fetch broadband data. Please scrape data first."

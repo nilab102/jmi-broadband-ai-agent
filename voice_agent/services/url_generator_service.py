@@ -77,7 +77,9 @@ class URLGeneratorService:
             phone_calls = params.get('phone_calls')
             product_type = params.get('product_type')
             sort_by = params.get('sort_by')
-            
+            new_line = params.get('new_line', '')
+            current_provider = params.get('current_provider', '')
+
             # Generate URL using the generator
             url = self.generator.generate_url(
                 postcode=postcode,
@@ -86,7 +88,9 @@ class URLGeneratorService:
                 providers=providers,
                 phone_calls=phone_calls,
                 product_type=product_type,
-                sort_by=sort_by
+                sort_by=sort_by,
+                new_line=new_line,
+                current_provider=current_provider
             )
             
             logger.info(f"✅ Generated URL for postcode: {postcode}")

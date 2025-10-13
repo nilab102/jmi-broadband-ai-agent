@@ -86,9 +86,19 @@ class ParameterExtractor:
                 (r'cheapest|fastest|recommended', 'sort_by', interpret_sort_preference),
             ],
             'new_line': [
-                (r'new\s*line[:\s]*(\w+)', 'new_line', lambda x: "NewLine" if x.lower() in ["yes", "true", "new", "line"] else ""),
+                # Direct new line requests
+                (r'new\s*line[:\s]*(\w+)', 'new_line', lambda x: "NewLine" if x.lower() in ["yes", "true", "new", "line", "installation", "cost"] else ""),
                 (r'include\s*new\s*line', 'new_line', lambda x: "NewLine"),
                 (r'new\s*line\s*cost', 'new_line', lambda x: "NewLine"),
+                (r'new\s*line\s*installation', 'new_line', lambda x: "NewLine"),
+                # Common conversational patterns
+                (r'add\s*new\s*line', 'new_line', lambda x: "NewLine"),
+                (r'with\s*new\s*line', 'new_line', lambda x: "NewLine"),
+                (r'want\s*new\s*line', 'new_line', lambda x: "NewLine"),
+                (r'need\s*new\s*line', 'new_line', lambda x: "NewLine"),
+                (r'new\s*line\s*please', 'new_line', lambda x: "NewLine"),
+                (r'new\s*line\s*option', 'new_line', lambda x: "NewLine"),
+                # Negation patterns (set to empty)
                 (r'existing\s*line|no\s*new\s*line', 'new_line', lambda x: ""),
             ],
             # Filter modification patterns

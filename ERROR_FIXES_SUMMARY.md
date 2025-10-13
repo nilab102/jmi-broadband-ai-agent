@@ -78,6 +78,24 @@ Location: url_operations.py:handle_natural_language_query - parameter extraction
   - Added None/empty validation in `extract_parameters()` and `_extract_with_regex()`
   - Added `_get_default_params()` method for safe fallbacks
 
+### 5. Import error for old parameter extraction service
+
+**Error:**
+```
+WARNING: voice_agent.tools.broadband_tool:<module>:74 - ⚠️ AI parameter extraction not available: No module named 'voice_agent.tools.parameter_extraction_service'
+```
+
+**Root Cause:**
+- broadband_tool.py was trying to import the old `parameter_extraction_service` module
+- But the file is named `parameter_extraction_service_old.py`
+- The modular refactoring already includes AI parameter extraction in the new system
+
+**Fix:**
+- Removed the import of the old service
+- Updated broadband_tool.py to rely on the modular ParameterExtractor class
+- ParameterExtractor handles AI extraction gracefully and falls back to regex
+- Simplified initialization by removing old AI extractor setup
+
 ## Files Modified
 
 | File | Changes |

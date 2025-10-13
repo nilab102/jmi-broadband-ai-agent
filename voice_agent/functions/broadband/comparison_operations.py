@@ -51,7 +51,16 @@ async def handle_compare_providers(
             if scrape_data_fn:
                 postcode = postcode or 'E14 9WB'
                 scrape_result = await scrape_data_fn(
-                    user_id, postcode, speed_in_mb, None, None, None, providers, current_provider, new_line, context
+                    user_id=user_id,
+                    postcode=postcode,
+                    speed_in_mb=speed_in_mb,
+                    contract_length=None,
+                    phone_calls=None,
+                    product_type=None,
+                    providers=providers,
+                    current_provider=current_provider,
+                    new_line=new_line,
+                    context=context
                 )
                 
                 # If scraping returned an error message, return it
@@ -152,7 +161,18 @@ async def handle_get_cheapest(
             # Scrape data if not available
             if scrape_data_fn:
                 postcode = postcode or 'E14 9WB'
-                scrape_result = await scrape_data_fn(user_id, postcode, None, None, None, None, None, current_provider, new_line, context)
+                scrape_result = await scrape_data_fn(
+                    user_id=user_id,
+                    postcode=postcode,
+                    speed_in_mb=None,
+                    contract_length=None,
+                    phone_calls=None,
+                    product_type=None,
+                    providers=None,
+                    current_provider=current_provider,
+                    new_line=new_line,
+                    context=context
+                )
                 
                 # If scraping returned an error message, return it
                 if scrape_result and isinstance(scrape_result, str) and scrape_result.startswith("❌"):
@@ -256,7 +276,18 @@ async def handle_get_fastest(
             # Scrape data if not available
             if scrape_data_fn:
                 postcode = postcode or 'E14 9WB'
-                scrape_result = await scrape_data_fn(user_id, postcode, None, None, None, None, None, current_provider, new_line, context)
+                scrape_result = await scrape_data_fn(
+                    user_id=user_id,
+                    postcode=postcode,
+                    speed_in_mb=None,
+                    contract_length=None,
+                    phone_calls=None,
+                    product_type=None,
+                    providers=None,
+                    current_provider=current_provider,
+                    new_line=new_line,
+                    context=context
+                )
                 
                 # If scraping returned an error message, return it
                 if scrape_result and isinstance(scrape_result, str) and scrape_result.startswith("❌"):

@@ -50,7 +50,60 @@ class ProviderMatcher:
             if provider_lower == valid_provider.lower():
                 self.cache[cache_key] = valid_provider
                 return valid_provider
-        
+
+        # Check for common abbreviations and partial matches (fallback when fuzzy search unavailable)
+        provider_abbreviations = {
+            'virgin': 'Virgin Media',
+            'vergin': 'Virgin Media',  # Common typo
+            'bt': 'BT',
+            'sky': 'Sky',
+            'talktalk': 'TalkTalk',
+            'talk talk': 'TalkTalk',
+            'plusnet': 'Plusnet',
+            'vodafone': 'Vodafone',
+            'hyperoptic': 'Hyperoptic',
+            'community fibre': 'Community Fibre',
+            '4th utility': '4th Utility',
+            'lightspeed': 'Lightspeed',
+            'airband': 'Airband',
+            'now broadband': 'NOW Broadband',
+            'muuvo': 'Muuvo'
+        }
+
+        # Check abbreviations
+        if provider_lower in provider_abbreviations:
+            self.cache[cache_key] = provider_abbreviations[provider_lower]
+            return provider_abbreviations[provider_lower]
+
+        # Check if input is contained in any valid provider name
+        for valid_provider in self.valid_providers:
+            if provider_lower in valid_provider.lower():
+                self.cache[cache_key] = valid_provider
+                return valid_provider
+
+        # Check if any valid provider name starts with the input
+        for valid_provider in self.valid_providers:
+            if valid_provider.lower().startswith(provider_lower):
+                self.cache[cache_key] = valid_provider
+                return valid_provider
+
+        # Check for common typos using simple edit distance (for short inputs)
+        if len(provider_lower) <= 10:  # Only for reasonably short inputs
+            for valid_provider in self.valid_providers:
+                valid_lower = valid_provider.lower()
+                # Check for single character differences
+                if len(valid_lower) == len(provider_lower):
+                    # Same length - check for 1-2 character differences
+                    diff_count = sum(1 for a, b in zip(valid_lower, provider_lower) if a != b)
+                    if diff_count <= 2:
+                        self.cache[cache_key] = valid_provider
+                        return valid_provider
+                elif abs(len(valid_lower) - len(provider_lower)) == 1:
+                    # Length difference of 1 - check if one is substring of the other
+                    if provider_lower in valid_lower or valid_lower in provider_lower:
+                        self.cache[cache_key] = valid_provider
+                        return valid_provider
+
         # Use fuzzy search if available
         if not self.fuzzy_searcher:
             logger.warning("⚠️ Fuzzy search not available for provider matching")

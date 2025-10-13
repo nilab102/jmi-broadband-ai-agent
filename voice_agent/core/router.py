@@ -1292,16 +1292,15 @@ def create_app():
         # Initialize conversation manager
         conversation_manager = get_conversation_manager()
 
-        # Initialize fuzzy postal code search (global instance)
+        # Initialize postal code service (uses service layer)
         try:
-            from fuzzy_postal_code import FastPostalCodeSearch
-            CONNECTION_STRING = "postgresql://postgres.jluuralqpnexhxlcuewz:HIiamjami1234@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
-            global fuzzy_searcher
-            fuzzy_searcher = FastPostalCodeSearch(CONNECTION_STRING)
-            logger.info("✅ Fuzzy postal code search initialized")
+            from voice_agent.services import get_postal_code_service
+            global postal_code_service
+            postal_code_service = get_postal_code_service()
+            logger.info("✅ Postal code service initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize fuzzy postal code search: {e}")
-            fuzzy_searcher = None
+            logger.error(f"❌ Failed to initialize postal code service: {e}")
+            postal_code_service = None
 
         logger.info("🚀 Starting conversation cleanup task")
 
@@ -1324,12 +1323,12 @@ def create_app():
     @app.on_event("shutdown")
     async def shutdown_event():
         """Cleanup on shutdown."""
-        if 'fuzzy_searcher' in globals() and fuzzy_searcher:
+        if 'postal_code_service' in globals() and postal_code_service:
             try:
-                fuzzy_searcher.shutdown()
-                logger.info("✅ Fuzzy postal code search shutdown")
+                # PostalCodeService handles shutdown internally via singleton pattern
+                logger.info("✅ Postal code service shutdown")
             except Exception as e:
-                logger.error(f"⚠️ Error shutting down fuzzy search: {e}")
+                logger.error(f"⚠️ Error shutting down postal code service: {e}")
 
     return app
 

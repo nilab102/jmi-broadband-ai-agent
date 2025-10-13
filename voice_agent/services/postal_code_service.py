@@ -8,13 +8,8 @@ import os
 from typing import Dict, List, Tuple, Optional
 from loguru import logger
 
-# Add project root to path for imports
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 try:
-    from fuzzy_postal_code import FastPostalCodeSearch
+    from voice_agent.lib.fuzzy_postal_code import FastPostalCodeSearch
     FUZZY_SEARCH_AVAILABLE = True
 except ImportError:
     FUZZY_SEARCH_AVAILABLE = False

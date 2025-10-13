@@ -1132,6 +1132,13 @@ You have access to {len(tools)} specialized tools for broadband comparison.
 
 ## 🌐 BROADBAND TOOL - SPECIAL GUIDANCE:
 
+### CONVERSATIONAL MODE - Build Requirements Piece by Piece:
+- **NEW**: Support for building broadband requirements incrementally
+- User can provide postcode first, then speed, then contract, etc.
+- **URLs auto-generate** when minimum parameters (postcode + speed) are available
+- **No scraping or recommendations until explicitly requested**
+- System remembers parameters across conversation turns
+
 ### Automatic Postcode Validation:
 - Postcodes are AUTOMATICALLY validated with regex and matched against database using fuzzy search
 - The system AUTO-SELECTS the best match (100% match or highest score)
@@ -1145,38 +1152,77 @@ You have access to {len(tools)} specialized tools for broadband comparison.
   - "Show me cheapest deals from BT and Sky"
   - "I want superfast fibre with unlimited calls"
   - "Compare Virgin Media and TalkTalk in Manchester"
-  
+
+### CONVERSATIONAL PARAMETER HANDLING:
+- **action_type="query"** now supports BOTH natural language AND individual parameters
+- If you get individual parameters (postcode, speed_in_mb, etc.), treat as parameter updates
+- URLs will auto-generate when postcode + speed are available
+- Example conversational flow:
+  - User: "I need broadband in E14 9WB" → Tool updates postcode, no URL yet
+  - User: "100Mb speed please" → Tool updates speed, auto-generates URL
+  - User: "Change to 24 months" → Tool updates contract, regenerates URL
+
 ### Action Types Available:
-1. **query** - Process natural language broadband queries (most common)
-   - Automatically extracts postcode, speed, contract, providers, etc.
-   - Handles postcode validation and auto-selection internally
-   - Example: user_id="123", action_type="query", query="Find 100Mb broadband in SW1A 1AA"
-   
+1. **query** - Process natural language OR handle parameter updates
+   - Natural language: user_id="123", action_type="query", query="Find 100Mb broadband in SW1A 1AA"
+   - Parameter updates: user_id="123", action_type="query", postcode="E14 9WB", speed_in_mb="55Mb"
+   - Automatically extracts and updates parameters incrementally
+   - URLs auto-generate when sufficient parameters available
+
 2. **generate_url** - Generate comparison URL with explicit parameters
    - Use when parameters are already known
    - Example: user_id="123", action_type="generate_url", postcode="E149WB", speed_in_mb="100Mb"
-   
-3. **get_recommendations** - Get AI-powered deal recommendations
+
+3. **get_recommendations** - Get AI-powered deal recommendations (only when requested)
    - Analyzes scraped data and provides personalized suggestions
    - Example: user_id="123", action_type="get_recommendations"
-   
+
 4. **compare_providers** - Compare specific providers
    - Example: user_id="123", action_type="compare_providers", providers="BT,Sky,Virgin Media"
-   
+
 5. **get_cheapest** - Find cheapest available deal
 6. **get_fastest** - Find fastest available deal
 7. **list_providers** - Show all available providers
 8. **filter_data** - Apply filters to existing results
 9. **refine_search** - Refine search parameters
 
-### Parameter Auto-Fill:
-- System remembers user's previous postcode and parameters
-- Will auto-fill from context if not provided in current query
-- Reduces friction for follow-up queries
+### CONVERSATIONAL MEMORY:
+- System maintains broadband parameters across conversation turns
+- **Auto-fills** previously mentioned parameters
+- **Auto-generates URLs** when minimum requirements met
+- **Only scrapes/recommends** when explicitly asked
 
 ### Example Usage Patterns:
 
-**Initial Search:**
+**CONVERSATIONAL FLOW (RECOMMENDED):**
+```
+User: "I need broadband in E14 9WB"
+Tool Call: broadband_action(
+  user_id="123",
+  action_type="query",
+  postcode="E14 9WB"
+)
+# Response: Parameters updated, waiting for more info
+
+User: "100Mb speed with Hyperoptic"
+Tool Call: broadband_action(
+  user_id="123",
+  action_type="query",
+  speed_in_mb="100Mb",
+  providers="Hyperoptic"
+)
+# Response: URL auto-generated with all parameters
+
+User: "Actually, change that to 24 months"
+Tool Call: broadband_action(
+  user_id="123",
+  action_type="query",
+  contract_length="24 months"
+)
+# Response: URL updated with new contract length
+```
+
+**Natural Language Query (still supported):**
 ```
 User: "Find broadband deals in E14 9WB with 100Mb speed"
 Tool Call: broadband_action(
@@ -1186,18 +1232,15 @@ Tool Call: broadband_action(
 )
 ```
 
-**Follow-up Query (postcode remembered):**
+**Explicit Actions (when intent is clear):**
 ```
-User: "Show me the cheapest option"
+User: "Show me recommendations"
 Tool Call: broadband_action(
   user_id="123",
-  action_type="get_cheapest"
+  action_type="get_recommendations"
 )
-# Postcode auto-filled from context
-```
+# Uses current parameters from conversation state
 
-**Provider Comparison:**
-```
 User: "Compare BT and Virgin Media"
 Tool Call: broadband_action(
   user_id="123",
@@ -1207,11 +1250,13 @@ Tool Call: broadband_action(
 ```
 
 ### Best Practices:
-1. **Use action_type="query" for natural language** - It's the most flexible
-2. **Don't ask for postcode confirmation** - System auto-selects best match
-3. **Trust the AI parameter extraction** - It handles complex queries well
-4. **Use specific action types when intent is clear** (get_cheapest, get_fastest, etc.)
-5. **Let the tool handle all validation** - Don't pre-process parameters
+1. **CONVERSATIONAL FIRST**: Use individual parameters with action_type="query" to build requirements incrementally
+2. **AUTO-GENERATION**: URLs generate automatically when postcode + speed are available - no need to explicitly request
+3. **NATURAL FLOW**: Users can say "postcode first", then "speed", then "contract" - parameters accumulate naturally
+4. **Don't ask for postcode confirmation** - System auto-selects best match
+5. **Only scrape/recommend when asked** - URLs generate immediately, but data analysis only on request
+6. **Use specific action types** (get_recommendations, compare_providers, etc.) when user explicitly asks for analysis
+7. **Trust parameter accumulation** - System remembers and auto-fills previous parameters
 """
         
         return guidance

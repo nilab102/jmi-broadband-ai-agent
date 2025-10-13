@@ -9,13 +9,8 @@ import asyncio
 from typing import Dict, Optional
 from loguru import logger
 
-# Add project root to path for imports
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 try:
-    from jmi_scrapper import BroadbandScraper
+    from voice_agent.lib.jmi_scrapper import BroadbandScraper
     SCRAPER_AVAILABLE = True
 except ImportError:
     SCRAPER_AVAILABLE = False
