@@ -11,20 +11,20 @@ def setup_python_path():
     """Set up Python path for the project."""
     # Get the project root (where this main.py file is located)
     project_root = os.path.dirname(os.path.abspath(__file__))
-    # Get the voice_agent directory
-    voice_agent_dir = os.path.join(project_root, 'voice_agent')
+    # Get the jmi_broadband_agent directory
+    jmi_broadband_agent_dir = os.path.join(project_root, 'jmi_broadband_agent')
 
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
     print(f"✅ Project root added to Python path: {project_root}")
-    return voice_agent_dir, project_root
+    return jmi_broadband_agent_dir, project_root
 
 def validate_environment():
     """Validate environment setup."""
     try:
         # Check if we can import the config module
-        from voice_agent.config.environment import validate_environment as validate_env
+        from jmi_broadband_agent.config.environment import validate_environment as validate_env
         print("✅ Config module imported successfully")
         
         # Validate environment configuration
@@ -49,7 +49,7 @@ def main():
     print("🔧 Compatible with existing frontend without changes")
 
     # Setup Python path
-    voice_agent_dir, project_root = setup_python_path()
+    jmi_broadband_agent_dir, project_root = setup_python_path()
 
     # Load environment variables from .env file in project root
     env_file_path = os.path.join(project_root, '.env')
@@ -65,8 +65,8 @@ def main():
         print("❌ Failed to start server due to configuration issues")
         sys.exit(1)
 
-    # Change to voice_agent directory
-    os.chdir(voice_agent_dir)
+    # Change to jmi_broadband_agent directory
+    os.chdir(jmi_broadband_agent_dir)
     
     # Import and run the router
     try:
@@ -83,8 +83,8 @@ def main():
         print("")
         
         # Import the router module and get the app
-        from voice_agent.core.router import app
-        from voice_agent.config.environment import get_ssl_config
+        from jmi_broadband_agent.core.router import app
+        from jmi_broadband_agent.config.environment import get_ssl_config
         import uvicorn
 
         # Get SSL configuration

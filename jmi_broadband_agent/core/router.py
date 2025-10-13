@@ -71,20 +71,20 @@ from pipecat.transports.network.fastapi_websocket import (
 )
 
 # Import new modular components
-from voice_agent.config.environment import get_backend_url, get_frontend_url, validate_environment
-from voice_agent.config.settings import get_settings, validate_settings
-from voice_agent.core.agent_manager import AgentManager, create_agent_manager
-from voice_agent.core.websocket_registry import (
+from jmi_broadband_agent.config.environment import get_backend_url, get_frontend_url, validate_environment
+from jmi_broadband_agent.config.settings import get_settings, validate_settings
+from jmi_broadband_agent.core.agent_manager import AgentManager, create_agent_manager
+from jmi_broadband_agent.core.websocket_registry import (
     register_session_user, unregister_session_user,
     register_tool_websocket, unregister_tool_websocket,
     get_all_users, send_to_user_tool_websocket
 )
-from voice_agent.core.text_agent import create_text_agent
-from voice_agent.core.voice_agent import create_voice_agent
-from voice_agent.core.conversation_manager import get_conversation_manager
-from voice_agent.utils.validators import validate_page_name, validate_api_key
-from voice_agent.utils.langfuse_tracing import get_langfuse_tracer, log_api_call, setup_tracing
-from voice_agent.functions.auth_store import auth_store_router
+from jmi_broadband_agent.core.text_agent import create_text_agent
+from jmi_broadband_agent.core.voice_agent import create_voice_agent
+from jmi_broadband_agent.core.conversation_manager import get_conversation_manager
+from jmi_broadband_agent.utils.validators import validate_page_name, validate_api_key
+from jmi_broadband_agent.utils.langfuse_tracing import get_langfuse_tracer, log_api_call, setup_tracing
+from jmi_broadband_agent.functions.auth_store import auth_store_router
 
 load_dotenv(override=True)
 
@@ -1294,7 +1294,7 @@ def create_app():
 
         # Initialize postal code service (uses service layer)
         try:
-            from voice_agent.services import get_postal_code_service
+            from jmi_broadband_agent.services import get_postal_code_service
             global postal_code_service
             postal_code_service = get_postal_code_service()
             logger.info("✅ Postal code service initialized")

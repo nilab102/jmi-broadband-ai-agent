@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Dict, Any
 from loguru import logger
 
-from voice_agent.broadband_url_generator import BroadbandConstants
+from jmi_broadband_agent.broadband_url_generator import BroadbandConstants
 
 
 def create_structured_output(

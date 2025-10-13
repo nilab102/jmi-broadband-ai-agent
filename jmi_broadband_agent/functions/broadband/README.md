@@ -50,7 +50,7 @@ broadband/
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband.helpers import (
+from jmi_broadband_agent.functions.broadband.helpers import (
     normalize_contract_length,
     create_structured_output
 )
@@ -80,7 +80,7 @@ output = create_structured_output(
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband import ParameterExtractor
+from jmi_broadband_agent.functions.broadband import ParameterExtractor
 
 extractor = ParameterExtractor(
     ai_extractor=ai_service,
@@ -108,7 +108,7 @@ params = extractor.extract_parameters(
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband import PostcodeValidator
+from jmi_broadband_agent.functions.broadband import PostcodeValidator
 
 validator = PostcodeValidator(
     postal_code_service=postal_service,
@@ -133,7 +133,7 @@ success, message, postcode = await validator.search_with_fuzzy(
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband import handle_generate_url
+from jmi_broadband_agent.functions.broadband import handle_generate_url
 
 result = await handle_generate_url(
     user_id="user123",
@@ -156,7 +156,7 @@ result = await handle_generate_url(
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband import handle_scrape_data
+from jmi_broadband_agent.functions.broadband import handle_scrape_data
 
 result = await handle_scrape_data(
     user_id="user123",
@@ -178,7 +178,7 @@ result = await handle_scrape_data(
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband import RecommendationEngine
+from jmi_broadband_agent.functions.broadband import RecommendationEngine
 
 engine = RecommendationEngine(recommendation_service)
 
@@ -201,7 +201,7 @@ result = await engine.handle_get_recommendations(
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband import (
+from jmi_broadband_agent.functions.broadband import (
     handle_compare_providers,
     handle_get_cheapest
 )
@@ -231,7 +231,7 @@ result = await handle_get_cheapest(
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband import (
+from jmi_broadband_agent.functions.broadband import (
     handle_filter_data,
     apply_filters
 )
@@ -255,7 +255,7 @@ result = await handle_filter_data(
 
 **Usage**:
 ```python
-from voice_agent.functions.broadband import ProviderMatcher
+from jmi_broadband_agent.functions.broadband import ProviderMatcher
 
 matcher = ProviderMatcher(
     valid_providers=provider_list,
@@ -275,7 +275,7 @@ providers = matcher.extract_providers_with_fuzzy("BT, sky, virgn")
 The refactored `broadband_tool.py` becomes a slim orchestrator:
 
 ```python
-from voice_agent.functions.broadband import (
+from jmi_broadband_agent.functions.broadband import (
     ParameterExtractor,
     PostcodeValidator,
     ProviderMatcher,
@@ -325,14 +325,14 @@ Each module can be tested independently:
 
 ```python
 # test_helpers.py
-from voice_agent.functions.broadband.helpers import normalize_contract_length
+from jmi_broadband_agent.functions.broadband.helpers import normalize_contract_length
 
 def test_normalize_contract_length():
     assert normalize_contract_length("12 months, 24 months") == "12 months,24 months"
     assert normalize_contract_length("") == ""
 
 # test_parameter_extraction.py
-from voice_agent.functions.broadband import ParameterExtractor
+from jmi_broadband_agent.functions.broadband import ParameterExtractor
 
 def test_extract_parameters():
     extractor = ParameterExtractor()

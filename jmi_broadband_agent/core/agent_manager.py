@@ -11,11 +11,11 @@ from pipecat.frames.frames import LLMMessagesAppendFrame
 from pipecat.processors.frameworks.rtvi import RTVIProcessor
 
 # Import configuration and utilities
-from voice_agent.config.settings import get_settings, MSSQL_SEARCH_AI_SYSTEM_INSTRUCTION
-from voice_agent.utils.validators import validate_page_name
+from jmi_broadband_agent.config.settings import get_settings, MSSQL_SEARCH_AI_SYSTEM_INSTRUCTION
+from jmi_broadband_agent.utils.validators import validate_page_name
 
 # Import page-specific tools
-from voice_agent.tools import (
+from jmi_broadband_agent.tools import (
     BroadbandTool,
     create_broadband_tool
 )

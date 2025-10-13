@@ -20,7 +20,7 @@ This created code duplication and inconsistent behavior between voice and text a
 
 A unified LangChain tool that wraps the entire modular tool structure and routes calls through `AgentManager`.
 
-**Location:** `voice_agent/core/text_agent.py`
+**Location:** `jmi_broadband_agent/core/text_agent.py`
 
 **Key Features:**
 - Implements LangChain's `BaseTool` interface
@@ -65,7 +65,7 @@ All actions route to the `broadband_action` function which is handled by the `Br
 
 `create_langchain_tools_from_agent_manager()` creates LangChain-compatible tools from the modular structure:
 
-**Location:** `voice_agent/core/text_agent.py`
+**Location:** `jmi_broadband_agent/core/text_agent.py`
 
 ```python
 def create_langchain_tools_from_agent_manager(
@@ -79,7 +79,7 @@ def create_langchain_tools_from_agent_manager(
 
 ### 4. **Updated LangChainTextAgent**
 
-**Location:** `voice_agent/core/text_agent.py`
+**Location:** `jmi_broadband_agent/core/text_agent.py`
 
 **Changes:**
 - Added `current_page` parameter to `__init__`
@@ -117,7 +117,7 @@ class LangChainTextAgent:
 
 ### 5. **Router Updates**
 
-**Location:** `voice_agent/core/router.py`
+**Location:** `jmi_broadband_agent/core/router.py`
 
 **Changes:**
 - Text agents are now keyed by `f"{user_id}_{current_page}"` to support page-specific contexts

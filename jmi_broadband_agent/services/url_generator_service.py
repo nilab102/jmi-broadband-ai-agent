@@ -14,7 +14,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 try:
-    from voice_agent.broadband_url_generator import (
+    from jmi_broadband_agent.broadband_url_generator import (
         BroadbandURLGenerator,
         BroadbandConstants,
         BroadbandSearchParams,

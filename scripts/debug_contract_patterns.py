@@ -4,7 +4,7 @@ Debug script to test contract length patterns and processor.
 """
 
 import re
-from voice_agent.broadband_url_generator import BroadbandConstants
+from jmi_broadband_agent.broadband_url_generator import BroadbandConstants
 
 def _extract_contract_lengths(match: str) -> str:
     """

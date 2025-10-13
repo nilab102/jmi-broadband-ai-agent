@@ -70,7 +70,7 @@
 
 ## Component Breakdown
 
-### 1. Router Layer (`voice_agent/core/router.py`)
+### 1. Router Layer (`jmi_broadband_agent/core/router.py`)
 
 **Responsibilities**:
 - Handle WebSocket connections
@@ -87,10 +87,10 @@
 
 **Changes**:
 - ✨ Simplified by extracting voice agent logic
-- ✅ Uses `create_voice_agent()` factory function
+- ✅ Uses `create_jmi_broadband_agent()` factory function
 - ✅ Cleaner error handling
 
-### 2. Voice Agent (`voice_agent/core/voice_agent.py`) ⭐ NEW
+### 2. Voice Agent (`jmi_broadband_agent/core/jmi_broadband_agent.py`) ⭐ NEW
 
 **Responsibilities**:
 - Manage Gemini Multimodal Live LLM
@@ -114,7 +114,7 @@ class VoiceAgent:
 - `on_transcript_update` - Process STT input
 - `on_client_connected/disconnected` - Connection events
 
-### 3. Text Agent (`voice_agent/core/text_agent.py`)
+### 3. Text Agent (`jmi_broadband_agent/core/text_agent.py`)
 
 **Responsibilities**:
 - Manage LangChain-based text conversations
@@ -137,7 +137,7 @@ class LangChainTextAgent:
 - Parameter auto-fill
 - Query pre-processing
 
-### 4. Agent Manager (`voice_agent/core/agent_manager.py`)
+### 4. Agent Manager (`jmi_broadband_agent/core/agent_manager.py`)
 
 **Responsibilities**:
 - Register and manage tools
@@ -269,7 +269,7 @@ class DatabaseService:
 - Connection pooling
 - Error handling
 
-### 6. Broadband Tool (`voice_agent/tools/broadband_tool.py`)
+### 6. Broadband Tool (`jmi_broadband_agent/tools/broadband_tool.py`)
 
 **Responsibilities**:
 - Orchestrate broadband search workflow
@@ -307,7 +307,7 @@ WebSocket (/voice/ws)
 Router.websocket_endpoint()
     │
     ▼
-create_voice_agent()
+create_jmi_broadband_agent()
     │
     ▼
 VoiceAgent.initialize()
@@ -398,7 +398,7 @@ def get_service():
 ### 2. Factory Pattern
 Agent creation uses factory functions:
 ```python
-async def create_voice_agent(user_id, session_id, websocket, page):
+async def create_jmi_broadband_agent(user_id, session_id, websocket, page):
     agent = VoiceAgent(user_id, session_id, page)
     await agent.initialize(websocket)
     return agent

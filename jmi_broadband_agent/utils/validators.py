@@ -6,7 +6,7 @@ Contains common validation functions for user input and system parameters.
 
 import re
 from typing import List, Optional
-from voice_agent.config.settings import get_settings
+from jmi_broadband_agent.config.settings import get_settings
 
 
 def validate_page_name(page_name: str) -> tuple[bool, str]:

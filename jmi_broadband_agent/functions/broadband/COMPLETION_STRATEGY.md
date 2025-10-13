@@ -200,7 +200,7 @@ Based on current progress:
 ## 🎉 Expected Final Structure
 
 ```
-voice_agent/functions/broadband/
+jmi_broadband_agent/functions/broadband/
 ├── __init__.py                   ✅ 89 lines
 ├── README.md                     ✅ Documentation
 ├── helpers.py                    ✅ 280 lines

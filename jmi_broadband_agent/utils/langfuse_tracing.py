@@ -51,7 +51,7 @@ def setup_tracing(service_name: str, exporter=None, settings=None):
     try:
         # Use provided settings or get default
         if settings is None:
-            from voice_agent.config.settings import get_settings
+            from jmi_broadband_agent.config.settings import get_settings
             settings = get_settings()
 
         # Create resource with service information
@@ -127,7 +127,7 @@ class LangfuseTracer:
             return
 
         self._initialized = True
-        from voice_agent.config.settings import get_settings
+        from jmi_broadband_agent.config.settings import get_settings
         self.settings = get_settings()
 
         if self.settings.langfuse_enabled and LANGFUSE_AVAILABLE:

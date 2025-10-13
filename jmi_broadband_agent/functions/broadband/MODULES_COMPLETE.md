@@ -48,7 +48,7 @@ broadband_tool.py
 
 ### After Refactoring
 ```
-voice_agent/functions/broadband/
+jmi_broadband_agent/functions/broadband/
 ├── __init__.py (exports all modules)
 ├── helpers.py (utility functions)
 ├── provider_matching.py (ProviderMatcher class)
@@ -258,7 +258,7 @@ broadband_tool.py (to be refactored)
 
 ### Example 1: Using ParameterExtractor
 ```python
-from voice_agent.functions.broadband import ParameterExtractor, ProviderMatcher
+from jmi_broadband_agent.functions.broadband import ParameterExtractor, ProviderMatcher
 
 # Initialize
 provider_matcher = ProviderMatcher(valid_providers, fuzzy_searcher)
@@ -272,7 +272,7 @@ params = extractor.extract_parameters("Find 100Mb broadband in E14 9WB")
 
 ### Example 2: Using PostcodeValidator
 ```python
-from voice_agent.functions.broadband import PostcodeValidator
+from jmi_broadband_agent.functions.broadband import PostcodeValidator
 
 # Initialize
 validator = PostcodeValidator(postal_code_service, conversation_state)
@@ -290,7 +290,7 @@ success, message, postcode = await validator.search_with_fuzzy(
 
 ### Example 3: Using URL Operations
 ```python
-from voice_agent.functions.broadband import handle_generate_url
+from jmi_broadband_agent.functions.broadband import handle_generate_url
 
 result = await handle_generate_url(
     user_id="user123",

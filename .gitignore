@@ -134,15 +134,15 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
-.env
-.envrc
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# # Environments
+# .env
+# .envrc
+# .venv
+# env/
+# venv/
+# ENV/
+# env.bak/
+# venv.bak/
 
 # Spyder project settings
 .spyderproject
@@ -218,10 +218,10 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-.env*.local
-.env.development.local
-.env.test.local
-.env.production.local
+# .env*.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
 
 # Vercel
 .vercel

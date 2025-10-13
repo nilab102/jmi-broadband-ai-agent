@@ -10,7 +10,7 @@ from typing import Dict, Optional
 from loguru import logger
 
 try:
-    from voice_agent.lib.jmi_scrapper import BroadbandScraper
+    from jmi_broadband_agent.lib.jmi_scrapper import BroadbandScraper
     SCRAPER_AVAILABLE = True
 except ImportError:
     SCRAPER_AVAILABLE = False

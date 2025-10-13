@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple, Optional
 from loguru import logger
 
 try:
-    from voice_agent.lib.fuzzy_postal_code import FastPostalCodeSearch
+    from jmi_broadband_agent.lib.fuzzy_postal_code import FastPostalCodeSearch
     FUZZY_SEARCH_AVAILABLE = True
 except ImportError:
     FUZZY_SEARCH_AVAILABLE = False

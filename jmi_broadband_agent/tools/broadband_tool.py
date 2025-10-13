@@ -8,7 +8,7 @@ scrapes data, and provides AI-powered recommendations with fuzzy postal code val
 
 ARCHITECTURE:
 - This file is now a slim orchestrator (~400 lines vs original 2,330 lines)
-- All business logic moved to /voice_agent/functions/broadband/ modules
+- All business logic moved to /jmi_broadband_agent/functions/broadband/ modules
 - Uses dependency injection for testability
 - Delegates to handler functions instead of internal methods
 """
@@ -24,10 +24,10 @@ from pipecat.processors.frameworks.rtvi import RTVIProcessor
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 
 # Import URL generator and constants (for tool definition)
-from voice_agent.broadband_url_generator import BroadbandConstants
+from jmi_broadband_agent.broadband_url_generator import BroadbandConstants
 
 # Import services
-from voice_agent.services import (
+from jmi_broadband_agent.services import (
     get_postal_code_service,
     get_scraper_service,
     get_url_generator_service,
@@ -35,7 +35,7 @@ from voice_agent.services import (
 )
 
 # Import modular broadband functions
-from voice_agent.functions.broadband import (
+from jmi_broadband_agent.functions.broadband import (
     # Classes
     ParameterExtractor,
     PostcodeValidator,
@@ -69,7 +69,7 @@ from voice_agent.functions.broadband import (
 # which gracefully falls back to regex extraction if AI is not available
 AI_EXTRACTION_AVAILABLE = False  # Not needed anymore with modular architecture
 
-from voice_agent.tools.base_tool import BaseTool
+from jmi_broadband_agent.tools.base_tool import BaseTool
 
 
 class BroadbandTool(BaseTool):
