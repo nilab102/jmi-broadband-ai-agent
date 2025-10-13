@@ -39,8 +39,6 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
   const [toolResults, setToolResults] = useState<BroadbandToolResult[]>([])
   const [filter, setFilter] = useState<string>('all')
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
-  const [toolWebSocketConnected, setToolWebSocketConnected] = useState(false)
-  const [isConnecting, setIsConnecting] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [manualControl, setManualControl] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
@@ -48,47 +46,20 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
   const [autoScroll, setAutoScroll] = useState(true)
   const [userScrolled, setUserScrolled] = useState(false)
 
-  const toolWebSocketRef = useRef<WebSocket | null>(null)
   const resultsContainerRef = useRef<HTMLDivElement | null>(null)
   const { userId } = useUserContext()
   const { currentPage } = usePageContext()
 
-  const connectToolWebSocket = () => {
-    if (toolWebSocketRef.current?.readyState === WebSocket.OPEN) {
-      console.log('🔧 Broadband Tool WebSocket already connected')
-      return
-    }
-
-    if (!userId || !userId.trim()) {
-      console.warn('🔧 Broadband Tool: Cannot connect - userId not available')
-      setConnectionError('User ID is not set. Please set a valid User ID first.')
-      return
-    }
-
-    setIsConnecting(true)
-    setConnectionError(null)
-
-    const toolWsUrl = config.websocket.tools(userId.trim(), currentPage)
-    console.log('🔧 Broadband Tool WebSocket URL:', toolWsUrl)
-    console.log('🔧 Broadband Tool Current page context:', currentPage)
-    console.log('🔧 Broadband Tool Current user ID:', userId)
-
-    const toolWs = new WebSocket(toolWsUrl)
-
-    toolWs.onopen = () => {
-      console.log('✅ Broadband Tool WebSocket connected successfully')
-      setToolWebSocketConnected(true)
-      setIsConnecting(false)
-    }
-
-    toolWs.onmessage = (event) => {
+  // Listen for WebSocket messages from the voiceClient managed connection
+  useEffect(() => {
+    const handleWebSocketMessage = (event: CustomEvent) => {
       try {
-        const data = JSON.parse(event.data)
+        const data = JSON.parse(event.detail.data)
         const timestamp = new Date().toLocaleTimeString()
-        
+
         // Add to debug messages
         setDebugMessages(prev => [...prev.slice(-9), `[${timestamp}] Received: ${JSON.stringify(data).substring(0, 100)}...`])
-        
+
         console.log('📡 Broadband Tool WebSocket RAW message received:', data)
         console.log('📡 Message structure - type:', data.type, 'action:', data.action, 'data:', data.data)
 
@@ -103,7 +74,7 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
           result: data.result || data.data || data,
           success: data.success !== false,
           executionTime: data.execution_time || data.executionTime,
-          raw: event.data
+          raw: event.detail.data
         }
 
         console.log('✅ Processing and adding tool result:', newResult.action, newResult)
@@ -123,51 +94,36 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
           }
         }
       } catch (error) {
-        console.error('❌ Error parsing broadband tool result:', error, 'Raw data:', event.data)
+        console.error('❌ Error parsing broadband tool result:', error, 'Raw data:', event.detail.data)
         setDebugMessages(prev => [...prev.slice(-9), `[ERROR] Failed to parse message`])
       }
     }
 
-    toolWs.onclose = (event) => {
-      console.log('🔌 Broadband Tool WebSocket disconnected:', event.code, event.reason)
-      setToolWebSocketConnected(false)
-      setIsConnecting(false)
-      
-      // Show user-friendly disconnect message
-      if (event.code !== 1000) { // 1000 = normal closure
-        const timestamp = new Date().toLocaleTimeString()
-        setDebugMessages(prev => [...prev.slice(-9), `[${timestamp}] ⚠️ Disconnected (code: ${event.code})`])
-        
-        // Auto-reconnect after 3 seconds if not manual closure
-        if (!manualControl && userId) {
-          setTimeout(() => {
-            console.log('🔄 Auto-reconnecting Tool WebSocket...')
-            connectToolWebSocket()
-          }, 3000)
-        }
-      }
-    }
+    // Add event listener for WebSocket messages from voiceClient
+    window.addEventListener('websocket-message', handleWebSocketMessage as EventListener)
 
-    toolWs.onerror = (error) => {
-      console.error('❌ Broadband Tool WebSocket error:', error)
-      setToolWebSocketConnected(false)
-      setIsConnecting(false)
-      const timestamp = new Date().toLocaleTimeString()
-      setConnectionError('Failed to connect to tool WebSocket. Will retry...')
-      setDebugMessages(prev => [...prev.slice(-9), `[${timestamp}] ❌ WebSocket error occurred`])
+    return () => {
+      window.removeEventListener('websocket-message', handleWebSocketMessage as EventListener)
     }
+  }, [])
 
-    toolWebSocketRef.current = toolWs
+  const connectToolWebSocket = () => {
+    // Use the external connect function if provided (from voiceClient)
+    if (onConnect) {
+      console.log('🔧 Using external connect function')
+      onConnect()
+    } else {
+      console.warn('🔧 No external connect function provided')
+    }
   }
 
   const disconnectToolWebSocket = () => {
-    if (toolWebSocketRef.current) {
-      console.log('🔌 Manually disconnecting Broadband Tool WebSocket')
-      toolWebSocketRef.current.close()
-      toolWebSocketRef.current = null
-      setToolWebSocketConnected(false)
-      setIsConnecting(false)
-      setConnectionError(null)
+    // Use the external disconnect function if provided (from voiceClient)
+    if (onDisconnect) {
+      console.log('🔌 Calling external disconnect function')
+      onDisconnect()
+    } else {
+      console.warn('🔌 No external disconnect function provided')
     }
   }
 
@@ -206,55 +162,6 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
     }
   }, [autoScroll, userScrolled])
 
-  // Auto-connect when voice/chat WebSocket connects OR when manual control is disabled
-  useEffect(() => {
-    // Connect if: (voice is connected OR manual control is off) AND userId is available
-    const shouldConnect = (isConnected || !manualControl) && userId && userId.trim()
-    
-    if (shouldConnect && !toolWebSocketRef.current) {
-      console.log('🔌 Connecting Tool WebSocket (Voice connected:', isConnected, ', Manual:', manualControl, ')')
-      connectToolWebSocket()
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (toolWebSocketRef.current) {
-        toolWebSocketRef.current.close()
-        toolWebSocketRef.current = null
-      }
-    }
-  }, [userId, currentPage, manualControl, isConnected])
-
-  // Handle manual control toggle
-  useEffect(() => {
-    if (manualControl && toolWebSocketRef.current) {
-      // If switching to manual control while connected, keep the connection
-      console.log('🔧 Manual control enabled, preserving existing connection')
-    }
-  }, [manualControl])
-
-  // Handle userId changes - reconnect with new userId
-  useEffect(() => {
-    console.log('👤 Broadband Tool: User ID changed, reconnecting...')
-
-    // Close existing connection
-    if (toolWebSocketRef.current?.readyState === WebSocket.OPEN) {
-      console.log('🔌 Broadband Tool: Closing existing WebSocket due to user ID change')
-      toolWebSocketRef.current.close()
-      toolWebSocketRef.current = null
-      setToolWebSocketConnected(false)
-    }
-
-    // Reconnect after a short delay
-    const reconnectTimeout = setTimeout(() => {
-      if (userId && userId.trim()) {
-        console.log('🔄 Broadband Tool: Reconnecting with new user ID...')
-        // The useEffect above will handle reconnection
-      }
-    }, 1000)
-
-    return () => clearTimeout(reconnectTimeout)
-  }, [userId])
 
   const copyResult = (result: BroadbandToolResult) => {
     navigator.clipboard.writeText(JSON.stringify(result, null, 2))
@@ -387,32 +294,14 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
             <h2 className="text-base sm:text-lg font-semibold">Broadband Tool Results</h2>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Manual Control Toggle */}
-            <div className="flex items-center space-x-2">
-              <span className="text-xs">Manual:</span>
-              <button
-                onClick={() => setManualControl(!manualControl)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  manualControl ? 'bg-green-400' : 'bg-gray-400'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    manualControl ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
 
             {/* Tool WebSocket Status */}
             <div className="flex items-center space-x-2 bg-white/20 rounded-lg px-3 py-1">
               <div className={`w-2 h-2 rounded-full ${
-                toolWebSocketConnected ? 'bg-green-400' :
-                isConnecting ? 'bg-yellow-400' : 'bg-red-400'
+                isConnected ? 'bg-green-400' : 'bg-red-400'
               } animate-pulse`} />
               <span className="text-xs font-medium">
-                {toolWebSocketConnected ? 'Tool WS Connected' :
-                 isConnecting ? 'Tool WS Connecting...' : 'Tool WS Disconnected'}
+                {isConnected ? 'Tool Connected' : 'Tool Disconnected'}
               </span>
             </div>
 
@@ -436,12 +325,22 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
           </div>
         )}
 
+        {/* Connection Info */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-500'}`} />
+            <span className="text-sm text-blue-700">
+              <strong>Tool Connection:</strong> {isConnected ? 'Connected and ready to receive results' : 'Disconnected - use Connect button to start'}
+            </span>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <h3 className="text-base sm:text-lg font-semibold text-gray-800">Results ({filteredResults.length})</h3>
-            {toolResults.length === 0 && !toolWebSocketConnected && (
+            {toolResults.length === 0 && !isConnected && (
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                Waiting for tool WebSocket connection...
+                Waiting for tool connection...
               </span>
             )}
             {userScrolled && (
@@ -463,31 +362,32 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
                   ? 'bg-green-500 hover:bg-green-600 text-white'
                   : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
               }`}
-              title={autoScroll ? 'Auto-scroll enabled' : 'Auto-scroll disabled'}
+              title={autoScroll ? 'Auto-scroll enabled - results scroll automatically' : 'Auto-scroll disabled - manual scroll only'}
             >
-              {autoScroll ? '↓ Auto' : '⏸️ Manual'}
+              {autoScroll ? '📜 Auto Scroll' : '📜 Manual Scroll'}
             </button>
-            {/* Manual Connect/Disconnect Buttons - only show when manual control is enabled */}
-            {manualControl && (
-              <>
-                {!toolWebSocketConnected && !isConnecting ? (
-                  <button
-                    onClick={connectToolWebSocket}
-                    className="text-sm bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition-colors"
-                    title="Connect to tool WebSocket"
-                  >
-                    Connect Tool
-                  </button>
-                ) : toolWebSocketConnected ? (
-                  <button
-                    onClick={disconnectToolWebSocket}
-                    className="text-sm bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors"
-                    title="Disconnect from tool WebSocket"
-                  >
-                    Disconnect Tool
-                  </button>
-                ) : null}
-              </>
+            {/* Connect/Disconnect Buttons - always visible for clarity */}
+            {!isConnected ? (
+              <button
+                onClick={connectToolWebSocket}
+                disabled={!userId?.trim()}
+                className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                  !userId?.trim()
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                }`}
+                title={!userId?.trim() ? 'Please set User ID first' : 'Connect to tool WebSocket'}
+              >
+                🔗 Connect Tool
+              </button>
+            ) : (
+              <button
+                onClick={disconnectToolWebSocket}
+                className="text-sm bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+                title="Disconnect from tool WebSocket"
+              >
+                🔌 Disconnect Tool
+              </button>
             )}
 
             {/* Debug Toggle */}
@@ -594,7 +494,7 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
               )}
             </div>
             <div className="mt-2 pt-2 border-t border-gray-700 text-gray-400">
-              <div>Connection Status: {toolWebSocketConnected ? '✅ Connected' : '❌ Disconnected'}</div>
+              <div>Connection Status: {isConnected ? '✅ Connected' : '❌ Disconnected'}</div>
               <div>User ID: {userId || 'Not set'}</div>
               <div>Page: {currentPage}</div>
               <div>Total Results: {toolResults.length}</div>
@@ -609,8 +509,7 @@ export function BroadbandToolResults({ isConnected, onConnect, onDisconnect }: B
         >
           {filteredResults.length === 0 ? (
             <NoResultsCard
-              isConnected={toolWebSocketConnected}
-              manualControl={manualControl}
+              isConnected={isConnected}
               onConnect={connectToolWebSocket}
             />
           ) : (

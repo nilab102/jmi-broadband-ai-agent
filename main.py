@@ -9,10 +9,10 @@ import sys
 
 def setup_python_path():
     """Set up Python path for the project."""
+    # Get the project root (where this main.py file is located)
+    project_root = os.path.dirname(os.path.abspath(__file__))
     # Get the voice_agent directory
-    voice_agent_dir = os.path.dirname(os.path.abspath(__file__))
-    # Get the parent directory (project root) to allow imports like "voice_agent.core.router"
-    project_root = os.path.dirname(voice_agent_dir)
+    voice_agent_dir = os.path.join(project_root, 'voice_agent')
 
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
@@ -110,3 +110,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

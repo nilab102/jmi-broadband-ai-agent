@@ -5,11 +5,10 @@ import { Wifi, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface NoResultsCardProps {
   isConnected?: boolean
-  manualControl?: boolean
   onConnect?: () => void
 }
 
-export function NoResultsCard({ isConnected, manualControl, onConnect }: NoResultsCardProps) {
+export function NoResultsCard({ isConnected, onConnect }: NoResultsCardProps) {
   return (
     <div className="text-center py-8 sm:py-16 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border-2 border-dashed border-gray-200">
       <div className="relative">
@@ -25,9 +24,7 @@ export function NoResultsCard({ isConnected, manualControl, onConnect }: NoResul
         <h3 className="text-lg font-semibold text-gray-700">No Tool Results Yet</h3>
         <p className="text-gray-500 max-w-sm mx-auto text-sm sm:text-base">
           {!isConnected
-            ? manualControl
-              ? "Manual control enabled. Click 'Connect Tool' to establish WebSocket connection."
-              : "Waiting for WebSocket connection to establish..."
+            ? "Click 'Connect Tool' to establish WebSocket connection and start receiving results."
             : "Use the chat interface above to search for broadband deals. Results will appear here automatically."
           }
         </p>
@@ -41,14 +38,6 @@ export function NoResultsCard({ isConnected, manualControl, onConnect }: NoResul
           </div>
         )}
 
-        {manualControl && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200 max-w-md mx-auto">
-            <div className="text-center">
-              <p className="text-xs text-blue-600 mb-2">Manual Control Mode</p>
-              <p className="text-xs text-blue-500">Toggle off for automatic connections</p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
