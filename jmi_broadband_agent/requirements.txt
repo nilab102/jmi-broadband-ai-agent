@@ -91,7 +91,7 @@ aiofiles>=23.2.0
 requests>=2.31.0
 
 # Audio processing dependencies
-PyAudio>=0.2.11
+# PyAudio>=0.2.11  # Not needed for server deployment (requires portaudio system libs)
 pydub>=0.25.1
 pyloudnorm>=0.1.0
 
