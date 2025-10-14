@@ -1264,13 +1264,8 @@ def create_app():
     
     # Configure CORS - allow both HTTP and HTTPS for development
     frontend_url = get_frontend_url()
-    allowed_origins = [
-        frontend_url,
-        "http://localhost:3000",
-        "https://localhost:3000",
-        "http://localhost:3001",
-        "https://localhost:3001"
-    ]
+    allowed_origins = ["*"]
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
@@ -1344,7 +1339,7 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=8200,
-        ssl_keyfile="./frontend/certificates/localhost-key.pem",
-        ssl_certfile="./frontend/certificates/localhost.pem",
+        # ssl_keyfile="./frontend/certificates/localhost-key.pem",
+        # ssl_certfile="./frontend/certificates/localhost.pem",
         log_level="info"
     )

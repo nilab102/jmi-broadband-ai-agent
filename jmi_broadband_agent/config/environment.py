@@ -33,16 +33,12 @@ class EnvironmentManager:
         "development": {
             "backend_url": "https://localhost:8200",
             "frontend_url": "https://localhost:3000",
-            "use_https": True,
-            "cert_path": "./cert.pem",
-            "key_path": "./key.pem"
+            "use_https": False
         },
         "production": {
             "backend_url": "https://176.9.16.194:8200",
             "frontend_url": "https://176.9.16.194:3000",
-            "use_https": True,
-            "cert_path": "./cert.pem",
-            "key_path": "./key.pem"
+            "use_https": False
         }
     }
     
